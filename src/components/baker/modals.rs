@@ -566,6 +566,70 @@ pub fn UpdateAvailableModal(
 }
 
 #[component]
+pub fn PickSenderModal(
+    members: Vec<Operator>,
+    on_close: EventHandler<()>,
+    on_send: EventHandler<String>,
+) -> Element {
+    rsx! {
+        div {
+            class: "fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm",
+            onclick: move |_| on_close.call(()),
+            div {
+                class: "bg-[#2b2b2b] w-[420px] rounded-xl shadow-2xl overflow-hidden border border-gray-600",
+                onclick: |e| e.stop_propagation(),
+                div { class: "px-6 py-4 border-b border-gray-600 flex justify-between items-center bg-[#333]",
+                    h2 { class: "text-white text-lg font-bold", "选择发送对象" }
+                    button {
+                        class: "text-gray-400 hover:text-white transition-colors",
+                        onclick: move |_| on_close.call(()),
+                        "✕"
+                    }
+                }
+                div { class: "p-4 max-h-[50vh] overflow-y-auto custom-scrollbar",
+                    if members.is_empty() {
+                        div { class: "text-center text-gray-500 py-6",
+                            "暂无可选成员"
+                        }
+                    } else {
+                        div { class: "grid grid-cols-1 gap-2",
+                            for member in members {
+                                {
+                                    let member_id = member.id.clone();
+                                    let member_name = member.name.clone();
+                                    let member_avatar = member.avatar_url.clone();
+                                    rsx! {
+                                        button {
+                                            class: "flex items-center gap-3 p-3 rounded hover:bg-[#3a3a3a] transition-colors text-left group",
+                                            onclick: move |_| on_send.call(member_id.clone()),
+                                            div { class: "w-10 h-10 rounded bg-gray-600 flex items-center justify-center overflow-hidden border border-gray-500 group-hover:border-blue-500",
+                                                if !member_avatar.is_empty() {
+                                                    img {
+                                                        src: "{member_avatar}",
+                                                        class: "w-full h-full object-cover",
+                                                    }
+                                                } else {
+                                                    span { class: "text-white font-bold",
+                                                        "{member_name.chars().next().unwrap_or('?')}"
+                                                    }
+                                                }
+                                            }
+                                            span { class: "text-white font-medium group-hover:text-blue-400",
+                                                "{member_name}"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
 pub fn InsertMessageModal(
     on_close: EventHandler<()>,
     on_save: EventHandler<(String, bool)>,
@@ -642,13 +706,28 @@ pub fn InsertMessageModal(
     }
 }
 
+#[derive(Clone, PartialEq)]
+pub enum NewChatSelection {
+    Single(Operator),
+    Group {
+        name: String,
+        avatar_url: String,
+        member_ids: Vec<String>,
+    },
+}
+
 #[component]
 pub fn NewChatModal(
     operators: Signal<Vec<Operator>>,
     on_close: EventHandler<()>,
-    on_select: EventHandler<Operator>,
+    on_select: EventHandler<NewChatSelection>,
 ) -> Element {
     let ops_list = operators.read().clone();
+    let mut selected_ids = use_signal(Vec::<String>::new);
+    let mut group_name = use_signal(|| "".to_string());
+    let group_avatar = use_signal(|| "".to_string());
+    let mut error_text = use_signal(|| "".to_string());
+    let selected_count = selected_ids().len();
 
     rsx! {
         div {
@@ -667,31 +746,134 @@ pub fn NewChatModal(
                     }
                 }
 
-                div { class: "p-4 max-h-[50vh] overflow-y-auto custom-scrollbar",
+                div { class: "p-4 max-h-[60vh] overflow-y-auto custom-scrollbar",
                     if ops_list.is_empty() {
                         div { class: "text-center text-gray-500 py-8",
                             "暂无干员数据，请先双击标题栏进行设置"
                         }
                     } else {
                         div { class: "grid grid-cols-1 gap-2",
-                            for op in ops_list {
-                                button {
-                                    class: "flex items-center gap-3 p-3 rounded hover:bg-[#3a3a3a] transition-colors text-left group",
-                                    onclick: move |_| on_select.call(op.clone()),
-                                    div { class: "w-10 h-10 rounded bg-gray-600 flex items-center justify-center overflow-hidden border border-gray-500 group-hover:border-blue-500",
-                                        if !op.avatar_url.is_empty() {
-                                            img {
-                                                src: "{op.avatar_url}",
-                                                class: "w-full h-full object-cover",
+                            for op in ops_list.iter().cloned() {
+                                {
+                                    let op_id = op.id.clone();
+                                    let op_name = op.name.clone();
+                                    let op_avatar = op.avatar_url.clone();
+                                    let op_id_for_click = op_id.clone();
+                                    rsx! {
+                                        div {
+                                            class: "flex items-center gap-3 p-3 rounded hover:bg-[#3a3a3a] transition-colors text-left group",
+                                            onclick: move |_| {
+                                                error_text.set("".to_string());
+                                                selected_ids.with_mut(|list| {
+                                                    if let Some(pos) = list.iter().position(|id| id == &op_id_for_click) {
+                                                        list.remove(pos);
+                                                    } else {
+                                                        list.push(op_id_for_click.clone());
+                                                    }
+                                                });
+                                            },
+                                            input {
+                                                r#type: "checkbox",
+                                                class: "w-4 h-4 accent-blue-600",
+                                                checked: selected_ids().contains(&op_id),
                                             }
-                                        } else {
-                                            span { class: "text-white font-bold",
-                                                "{op.name.chars().next().unwrap_or('?')}"
+                                            div { class: "w-10 h-10 rounded bg-gray-600 flex items-center justify-center overflow-hidden border border-gray-500 group-hover:border-blue-500",
+                                                if !op_avatar.is_empty() {
+                                                    img {
+                                                        src: "{op_avatar}",
+                                                        class: "w-full h-full object-cover",
+                                                    }
+                                                } else {
+                                                    span { class: "text-white font-bold",
+                                                        "{op_name.chars().next().unwrap_or('?')}"
+                                                    }
+                                                }
+                                            }
+                                            span { class: "text-white font-medium group-hover:text-blue-400",
+                                                "{op_name}"
                                             }
                                         }
                                     }
-                                    span { class: "text-white font-medium group-hover:text-blue-400",
-                                        "{op.name}"
+                                }
+                            }
+                        }
+                    }
+                }
+                if !ops_list.is_empty() {
+                    div { class: "px-4 pb-4 space-y-3",
+                        if selected_count == 1 {
+                            div { class: "flex justify-end",
+                                button {
+                                    class: "px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium",
+                                    onclick: move |_| {
+                                        if let Some(op_id) = selected_ids().first().cloned() {
+                                            if let Some(op) = ops_list.iter().find(|op| op.id == op_id).cloned() {
+                                                on_select.call(NewChatSelection::Single(op));
+                                            }
+                                        }
+                                    },
+                                    "新建会话"
+                                }
+                            }
+                        }
+                        if selected_count > 1 {
+                            div { class: "space-y-3",
+                                input {
+                                    class: "w-full bg-[#222] border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500",
+                                    placeholder: "群组名称",
+                                    value: "{group_name}",
+                                    oninput: move |e| {
+                                        group_name.set(e.value());
+                                        error_text.set("".to_string());
+                                    },
+                                }
+                                input {
+                                    class: "w-full bg-[#222] border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500",
+                                    r#type: "file",
+                                    accept: "image/*",
+                                    onchange: move |evt| {
+                                        let files: Vec<FileData> = evt.files();
+                                        if let Some(file) = files.first().cloned() {
+                                            let file_name: String = file.name();
+                                            let mime = file
+                                                .content_type()
+                                                .unwrap_or_else(|| mime_from_filename(&file_name).to_string());
+                                            let mut preview = group_avatar;
+                                            spawn(async move {
+                                                if let Ok(bytes) = file.read_bytes().await {
+                                                    let data_url = data_url_from_bytes(&mime, bytes.to_vec());
+                                                    preview.set(data_url);
+                                                }
+                                            });
+                                        }
+                                    },
+                                }
+                                if !group_avatar().is_empty() {
+                                    div { class: "flex justify-center",
+                                        div { class: "w-14 h-14 rounded bg-gray-600 flex items-center justify-center overflow-hidden border border-gray-500",
+                                            img { src: "{group_avatar}", class: "w-full h-full object-cover" }
+                                        }
+                                    }
+                                }
+                                if !error_text().is_empty() {
+                                    div { class: "text-red-400 text-sm", "{error_text}" }
+                                }
+                                div { class: "flex justify-end",
+                                    button {
+                                        class: "px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium",
+                                        onclick: move |_| {
+                                            let name = group_name().trim().to_string();
+                                            if name.is_empty() {
+                                                error_text.set("请输入群组名称".to_string());
+                                                return;
+                                            }
+                                            on_select.call(NewChatSelection::Group {
+                                                name,
+                                                avatar_url: group_avatar(),
+                                                member_ids: selected_ids(),
+                                            });
+                                        },
+                                        "新建群组会话"
                                     }
                                 }
                             }

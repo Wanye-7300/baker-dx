@@ -8,8 +8,10 @@ const CHAT_PLUS: Asset = asset!("/assets/images/chat_plus.png");
 pub fn InputBar(
     on_send: EventHandler<String>,
     on_send_other: EventHandler<String>,
+    is_group: bool,
     on_send_status: EventHandler<String>,
     menu_close_token: ReadSignal<usize>,
+    clear_text_token: ReadSignal<usize>,
 ) -> Element {
     let mut text = use_signal(String::new);
     let mut send_menu = use_signal(|| Option::<(i32, i32)>::None);
@@ -21,11 +23,10 @@ pub fn InputBar(
             text.set(String::new());
         }
     };
-    let mut handle_submit_other = move || {
+    let handle_submit_other = move || {
         let val = text.read().clone();
         if !val.trim().is_empty() {
             on_send_other.call(val);
-            text.set(String::new());
         }
     };
     let mut handle_submit_status = move || {
@@ -38,6 +39,10 @@ pub fn InputBar(
     use_effect(move || {
         menu_close_token.read();
         send_menu.set(None);
+    });
+    use_effect(move || {
+        clear_text_token.read();
+        text.set(String::new());
     });
 
     rsx! {
@@ -56,7 +61,11 @@ pub fn InputBar(
                             handle_submit_other();
                             send_menu.set(None);
                         },
-                        "为对方发送…"
+                        if is_group {
+                            "为……发送……"
+                        } else {
+                            "为对方发送…"
+                        }
                     }
                     div {
                         class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
@@ -82,7 +91,7 @@ pub fn InputBar(
                         if evt.key() == Key::Enter {
                             handle_submit();
                         }
-                    }
+                    },
                 }
                 // 输入框内的右侧图标 (气泡/发送)
                 div {
@@ -90,12 +99,18 @@ pub fn InputBar(
                     onclick: move |_| handle_submit(),
                     oncontextmenu: move |evt| {
                         evt.prevent_default();
-                        send_menu.set(Some((
-                            evt.client_coordinates().x as i32,
-                            evt.client_coordinates().y as i32,
-                        )));
+                        send_menu
+                            .set(
+                                Some((
+                                    evt.client_coordinates().x as i32,
+                                    evt.client_coordinates().y as i32,
+                                )),
+                            );
                     },
-                    img { src: "{CHAT_ENTER}", class: "w-full h-full object-contain" }
+                    img {
+                        src: "{CHAT_ENTER}",
+                        class: "w-full h-full object-contain",
+                    }
                 }
             }
 
@@ -105,14 +120,20 @@ pub fn InputBar(
                 button {
                     class: "w-10 h-10 rounded-full flex items-center justify-center shadow-sm hover:brightness-95 transition-all cursor-pointer",
                     style: "background-color: rgb(240, 238, 238);",
-                    img { src: "{CHAT_EMOJI}", class: "w-6 h-6 object-contain opacity-80" }
+                    img {
+                        src: "{CHAT_EMOJI}",
+                        class: "w-6 h-6 object-contain opacity-80",
+                    }
                 }
                 // 加号按钮
                 button {
                     class: "w-10 h-10 rounded-full flex items-center justify-center shadow-sm hover:brightness-95 transition-all cursor-pointer",
                     style: "background-color: rgb(240, 238, 238);",
                     onclick: move |_| handle_submit(),
-                    img { src: "{CHAT_PLUS}", class: "w-6 h-6 object-contain opacity-80" }
+                    img {
+                        src: "{CHAT_PLUS}",
+                        class: "w-6 h-6 object-contain opacity-80",
+                    }
                 }
             }
         }

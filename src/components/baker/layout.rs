@@ -1,10 +1,10 @@
 use crate::components::baker::chat_area::{ChatArea, PendingTyping, ReplayTypingPhase};
 use crate::components::baker::modals::{
-    NewChatModal, ProfileModal, ReplayIntervalMode, ReplaySettings, ReplaySettingsModal,
-    SettingsModal, UpdateAvailableModal,
+    NewChatModal, NewChatSelection, ProfileModal, ReplayIntervalMode, ReplaySettings,
+    ReplaySettingsModal, SettingsModal, UpdateAvailableModal,
 };
 use crate::components::baker::models::{
-    BackgroundMode, ChatHeadStyle, Contact, Message, MessageKind, Operator,
+    BackgroundMode, ChatHeadStyle, Contact, Message, MessageKind,
 };
 use crate::components::baker::sidebar::Sidebar;
 use crate::components::baker::storage::{load_state, save_state};
@@ -225,12 +225,8 @@ pub fn BakerLayout() -> Element {
         add_message(user_id, content, MessageKind::Normal);
     };
 
-    let handle_send_other = move |content: String| {
-        let current_contact_id = match selected_contact_id() {
-            Some(id) => id,
-            None => return,
-        };
-        add_message(current_contact_id, content, MessageKind::Normal);
+    let mut handle_send_other = move |sender_id: String, content: String| {
+        add_message(sender_id, content, MessageKind::Normal);
     };
 
     let handle_send_status = move |content: String| {
@@ -305,21 +301,43 @@ pub fn BakerLayout() -> Element {
         }
     });
 
-    // Helper to add contact
-    let add_contact = move |op: Operator| {
+    let add_contact = move |selection: NewChatSelection| {
         let mut state = app_state.write();
-        let op_id = op.id.clone();
-        if !state.contacts.iter().any(|c| c.id == op_id) {
-            state.contacts.push(Contact {
-                id: op_id.clone(),
-                unread_count: 0,
-                chat_head_style: ChatHeadStyle::Default,
-            });
-            selected_contact_id.set(Some(op_id));
-            show_new_chat.set(false);
-        } else {
-            selected_contact_id.set(Some(op_id));
-            show_new_chat.set(false);
+        match selection {
+            NewChatSelection::Single(op) => {
+                let op_id = op.id.clone();
+                if !state.contacts.iter().any(|c| c.id == op_id) {
+                    state.contacts.push(Contact {
+                        id: op_id.clone(),
+                        unread_count: 0,
+                        chat_head_style: ChatHeadStyle::Default,
+                        name: op.name.clone(),
+                        avatar_url: op.avatar_url.clone(),
+                        participant_ids: vec![op_id.clone()],
+                        is_group: false,
+                    });
+                }
+                selected_contact_id.set(Some(op_id));
+                show_new_chat.set(false);
+            }
+            NewChatSelection::Group {
+                name,
+                avatar_url,
+                member_ids,
+            } => {
+                let group_id = Uuid::new_v4().to_string();
+                state.contacts.push(Contact {
+                    id: group_id.clone(),
+                    unread_count: 0,
+                    chat_head_style: ChatHeadStyle::Default,
+                    name,
+                    avatar_url,
+                    participant_ids: member_ids,
+                    is_group: true,
+                });
+                selected_contact_id.set(Some(group_id));
+                show_new_chat.set(false);
+            }
         }
     };
 
@@ -358,7 +376,13 @@ pub fn BakerLayout() -> Element {
             let sender_id = if is_self {
                 app_state.read().user_profile.id.clone()
             } else {
-                contact_id.clone()
+                app_state
+                    .read()
+                    .contacts
+                    .iter()
+                    .find(|c| c.id == contact_id)
+                    .and_then(|c| c.participant_ids.first().cloned())
+                    .unwrap_or(contact_id.clone())
             };
             let new_id = {
                 let mut state = app_state.write();
@@ -706,49 +730,39 @@ pub fn BakerLayout() -> Element {
 
                 // 右侧聊天区
                 if let Some(contact) = selected_contact {
-                    if let Some(operator) = app_state
-                        .read()
-                        .operators
-                        .iter()
-                        .find(|op| op.id == contact.id)
-                        .cloned()
                     {
-                        {
-                            let replay_prev_sender_id = replay_active()
-                                .and_then(|replay| {
-                                    if replay.contact_id == contact.id {
-                                        replay.prev_sender_id
-                                    } else {
-                                        None
-                                    }
-                                });
-                            let force_first_avatar = replay_active()
-                                .map(|replay| replay.contact_id == contact.id)
-                                .unwrap_or(false);
-                            rsx! {
-                                ChatArea {
-                                    contact,
-                                    operator,
-                                    messages,
-                                    user_profile,
-                                    menu_close_token,
-                                    first_prev_sender_id: replay_prev_sender_id,
-                                    force_first_avatar,
-                                    pending_typing: replay_pending_for_contact,
-                                    on_send_message: handle_send,
-                                    on_send_other_message: handle_send_other,
-                                    on_send_status: handle_send_status,
-                                    on_delete_message: delete_message,
-                                    on_edit_message: edit_message,
-                                    on_insert_message: insert_message,
-                                    on_start_replay: move |msg_id| replay_request_msg_id.set(Some(msg_id)),
-                                    on_update_chat_head_style: update_chat_head_style,
+                        let replay_prev_sender_id = replay_active()
+                            .and_then(|replay| {
+                                if replay.contact_id == contact.id {
+                                    replay.prev_sender_id
+                                } else {
+                                    None
                                 }
+                            });
+                        let force_first_avatar = replay_active()
+                            .map(|replay| replay.contact_id == contact.id)
+                            .unwrap_or(false);
+                        rsx! {
+                            ChatArea {
+                                contact,
+                                    operators,
+                                messages,
+                                user_profile,
+                                menu_close_token,
+                                first_prev_sender_id: replay_prev_sender_id,
+                                force_first_avatar,
+                                pending_typing: replay_pending_for_contact,
+                                on_send_message: handle_send,
+                                    on_send_other_message: move |(sender_id, text)| {
+                                        handle_send_other(sender_id, text);
+                                    },
+                                on_send_status: handle_send_status,
+                                on_delete_message: delete_message,
+                                on_edit_message: edit_message,
+                                on_insert_message: insert_message,
+                                on_start_replay: move |msg_id| replay_request_msg_id.set(Some(msg_id)),
+                                on_update_chat_head_style: update_chat_head_style,
                             }
-                        }
-                    } else {
-                        div { class: "flex-1 flex items-center justify-center text-gray-500 bg-gray-900/50 border border-gray-600 backdrop-blur-sm",
-                            "未找到干员信息"
                         }
                     }
                 } else {

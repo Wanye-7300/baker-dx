@@ -70,6 +70,10 @@ fn migrate_legacy_state(legacy: LegacyAppState) -> AppState {
             }
         })
         .collect::<Vec<_>>();
+    let operator_map = operators
+        .iter()
+        .map(|op| (op.id.clone(), (op.name.clone(), op.avatar_url.clone())))
+        .collect::<HashMap<_, _>>();
 
     let contacts = legacy
         .contacts
@@ -80,10 +84,18 @@ fn migrate_legacy_state(legacy: LegacyAppState) -> AppState {
                 id_map.insert(contact.id, new_id.clone());
                 new_id
             });
+            let (name, avatar) = operator_map
+                .get(&new_id)
+                .cloned()
+                .unwrap_or_else(|| ("".to_string(), "".to_string()));
             Contact {
-                id: new_id,
+                id: new_id.clone(),
                 unread_count: contact.unread_count,
                 chat_head_style: contact.chat_head_style,
+                name,
+                avatar_url: avatar,
+                participant_ids: vec![new_id],
+                is_group: false,
             }
         })
         .collect::<Vec<_>>();

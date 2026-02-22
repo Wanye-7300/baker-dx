@@ -19,12 +19,16 @@ pub fn Sidebar(
             // 联系人列表区域
             div { class: "flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar pb-20",
                 for contact in contacts_list {
-                    if let Some(operator) = ops_list.iter().find(|op| op.id == contact.id) {
-                        ContactItem {
-                            key: "{contact.id}",
-                            operator: operator.clone(),
-                            is_selected: selected_contact_id() == Some(contact.id.clone()),
-                            onclick: move |_| selected_contact_id.set(Some(contact.id.clone())),
+                    {
+                        let operator = ops_list.iter().find(|op| op.id == contact.id).cloned();
+                        rsx! {
+                            ContactItem {
+                                key: "{contact.id}",
+                                contact: contact.clone(),
+                                operator,
+                                is_selected: selected_contact_id() == Some(contact.id.clone()),
+                                onclick: move |_| selected_contact_id.set(Some(contact.id.clone())),
+                            }
                         }
                     }
                 }
@@ -53,10 +57,25 @@ pub fn Sidebar(
 
 #[component]
 fn ContactItem(
-    operator: Operator,
+    contact: Contact,
+    operator: Option<Operator>,
     is_selected: bool,
     onclick: EventHandler<MouseEvent>,
 ) -> Element {
+    let display_name = if !contact.name.is_empty() {
+        contact.name.clone()
+    } else if let Some(op) = operator.as_ref() {
+        op.name.clone()
+    } else {
+        "未命名会话".to_string()
+    };
+    let avatar_url = if !contact.avatar_url.is_empty() {
+        contact.avatar_url.clone()
+    } else if let Some(op) = operator.as_ref() {
+        op.avatar_url.clone()
+    } else {
+        "".to_string()
+    };
     // 基础样式
     let base_classes = "w-full h-[88px] relative rounded-xl flex items-center p-3 cursor-pointer transition-all group overflow-hidden shrink-0";
 
@@ -81,14 +100,14 @@ fn ContactItem(
                 // 头像容器
                 div { class: "w-full h-full rounded-lg overflow-hidden border border-gray-500/50 bg-gray-700 flex items-center justify-center",
                     // 这里可以用图片，暂时用首字母代替
-                    if !operator.avatar_url.is_empty() {
+                    if !avatar_url.is_empty() {
                         img {
-                            src: "{operator.avatar_url}",
+                            src: "{avatar_url}",
                             class: "w-full h-full object-cover",
                         }
                     } else {
                         span { class: "text-2xl text-gray-300 font-bold",
-                            "{operator.name.chars().next().unwrap_or('?')}"
+                            "{display_name.chars().next().unwrap_or('?')}"
                         }
                     }
                 }
@@ -100,7 +119,7 @@ fn ContactItem(
                 // 第一行：昵称
                 div { class: "flex items-center",
                     span { class: "text-white text-lg font-bold truncate tracking-wide",
-                        "{operator.name}"
+                        "{display_name}"
                     }
                 }
             }

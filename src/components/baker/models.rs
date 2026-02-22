@@ -12,6 +12,14 @@ pub struct Contact {
     pub unread_count: usize,
     #[serde(default)]
     pub chat_head_style: ChatHeadStyle,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub avatar_url: String,
+    #[serde(default)]
+    pub participant_ids: Vec<String>,
+    #[serde(default)]
+    pub is_group: bool,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, Default)]

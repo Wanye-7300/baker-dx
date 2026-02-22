@@ -1,5 +1,5 @@
 use crate::components::baker::input_bar::InputBar;
-use crate::components::baker::modals::{EditMessageModal, InsertMessageModal};
+use crate::components::baker::modals::{EditMessageModal, InsertMessageModal, PickSenderModal};
 use crate::components::baker::models::{
     ChatHeadStyle, Contact, Message, MessageKind, Operator, UserProfile,
 };
@@ -28,7 +28,7 @@ pub struct PendingTyping {
 #[component]
 pub fn ChatArea(
     contact: Contact,
-    operator: Operator,
+    operators: ReadSignal<Vec<Operator>>,
     messages: ReadSignal<Vec<Message>>,
     user_profile: UserProfile,
     menu_close_token: ReadSignal<usize>,
@@ -36,7 +36,7 @@ pub fn ChatArea(
     force_first_avatar: bool,
     pending_typing: ReadSignal<Option<PendingTyping>>,
     on_send_message: EventHandler<String>,
-    on_send_other_message: EventHandler<String>,
+    on_send_other_message: EventHandler<(String, String)>,
     on_send_status: EventHandler<String>,
     on_delete_message: EventHandler<String>,
     on_edit_message: EventHandler<(String, String)>,
@@ -49,6 +49,9 @@ pub fn ChatArea(
     let mut editing_msg_id = use_signal(|| Option::<String>::None);
     let mut insert_before_id = use_signal(|| Option::<String>::None);
     let mut header_menu_open = use_signal(|| false);
+    let mut show_pick_sender = use_signal(|| false);
+    let mut pick_sender_text = use_signal(|| "".to_string());
+    let mut clear_input_token = use_signal(|| 0usize);
 
     use_effect(move || {
         menu_close_token.read();
@@ -96,11 +99,34 @@ pub fn ChatArea(
         }
         insert_before_id.set(None);
     };
-    let operator = Rc::new(operator);
     let user_id = user_profile.id.clone();
     let user_profile = Rc::new(user_profile);
     let first_prev_sender_id = first_prev_sender_id.clone();
     let pending_typing_state = pending_typing.read().clone();
+    let operators_list = operators.read().clone();
+    let header_name = if !contact.name.is_empty() {
+        contact.name.clone()
+    } else {
+        operators_list
+            .iter()
+            .find(|op| op.id == contact.id)
+            .map(|op| op.name.clone())
+            .unwrap_or_else(|| "未命名会话".to_string())
+    };
+    let resolve_sender = |sender_id: &str| -> (String, String) {
+        if sender_id == user_id {
+            return (user_profile.name.clone(), user_profile.avatar_url.clone());
+        }
+        if let Some(op) = operators_list.iter().find(|op| op.id == sender_id) {
+            return (op.name.clone(), op.avatar_url.clone());
+        }
+        ("".to_string(), "".to_string())
+    };
+    let selectable_members = contact
+        .participant_ids
+        .iter()
+        .filter_map(|id| operators_list.iter().find(|op| op.id == *id).cloned())
+        .collect::<Vec<_>>();
     enum ChatRow {
         Status {
             id: String,
@@ -113,6 +139,8 @@ pub fn ChatArea(
             item_margin: String,
             msg_id: String,
             pending_phase: Option<ReplayTypingPhase>,
+            sender_name: String,
+            sender_avatar: String,
         },
     }
     let mut message_rows = Vec::new();
@@ -149,6 +177,7 @@ pub fn ChatArea(
                 None
             }
         });
+        let (sender_name, sender_avatar) = resolve_sender(&msg.sender_id);
         message_rows.push(ChatRow::Message {
             msg: msg.clone(),
             is_self,
@@ -156,6 +185,8 @@ pub fn ChatArea(
             item_margin,
             msg_id: msg.id.clone(),
             pending_phase,
+            sender_name,
+            sender_avatar,
         });
         last_sender_id = Some(msg.sender_id.clone());
     }
@@ -181,6 +212,21 @@ pub fn ChatArea(
                 InsertMessageModal {
                     on_close: move |_| insert_before_id.set(None),
                     on_save: handle_insert_save,
+                }
+            }
+            if show_pick_sender() {
+                PickSenderModal {
+                    members: selectable_members.clone(),
+                    on_close: move |_| show_pick_sender.set(false),
+                    on_send: move |sender_id| {
+                        let text = pick_sender_text();
+                        if !text.trim().is_empty() {
+                            on_send_other_message.call((sender_id, text));
+                            pick_sender_text.set("".to_string());
+                            clear_input_token.set(clear_input_token() + 1);
+                        }
+                        show_pick_sender.set(false);
+                    },
                 }
             }
 
@@ -257,7 +303,7 @@ pub fn ChatArea(
 
                 div { class: "absolute inset-0 flex items-center justify-between px-6 z-[120]",
                     div { class: "flex items-center gap-2 mt-1",
-                        span { class: "text-white font-bold text-lg", "{operator.name}" }
+                        span { class: "text-white font-bold text-lg", "{header_name}" }
                     }
 
                     div { class: "flex items-center justify-end h-full relative",
@@ -387,15 +433,18 @@ pub fn ChatArea(
                                 item_margin,
                                 msg_id,
                                 pending_phase,
+                                sender_name,
+                                sender_avatar,
                             } => rsx! {
                                 div { class: "{item_margin}", key: "{msg_id}",
                                     MessageBubble {
                                         message: msg,
                                         is_self,
                                         show_avatar,
+                                        show_sender_name: contact.is_group && show_avatar,
+                                        sender_name,
+                                        sender_avatar,
                                         pending_phase,
-                                        contact: contact.clone(),
-                                        operator: operator.clone(),
                                         user_profile: user_profile.clone(),
                                         on_context_menu: move |evt: MouseEvent| {
                                             context_menu
@@ -420,9 +469,19 @@ pub fn ChatArea(
                     div { class: "p-4",
                         InputBar {
                             on_send: move |text| on_send_message.call(text),
-                            on_send_other: move |text| on_send_other_message.call(text),
+                            on_send_other: move |text| {
+                                if contact.is_group {
+                                    pick_sender_text.set(text);
+                                    show_pick_sender.set(true);
+                                } else {
+                                    on_send_other_message.call((contact.id.clone(), text));
+                                    clear_input_token.set(clear_input_token() + 1);
+                                }
+                            },
+                            is_group: contact.is_group,
                             on_send_status: move |text| on_send_status.call(text),
                             menu_close_token,
+                            clear_text_token: clear_input_token,
                         }
                     }
                 }
@@ -436,9 +495,10 @@ fn MessageBubble(
     message: Message,
     is_self: bool,
     show_avatar: bool,
+    show_sender_name: bool,
+    sender_name: String,
+    sender_avatar: String,
     pending_phase: Option<ReplayTypingPhase>,
-    contact: Contact,
-    operator: Rc<Operator>,
     user_profile: Rc<UserProfile>,
     on_context_menu: EventHandler<MouseEvent>,
 ) -> Element {
@@ -526,9 +586,27 @@ fn MessageBubble(
             "relative group mt-1 {anim_origin} cursor-context-menu inline-block max-w-[60%] min-w-0 ml-[68px]"
         )
     };
+    let name_wrap_class = if is_self {
+        "w-full flex justify-end pr-[68px]"
+    } else {
+        "w-full flex justify-start pl-[68px]"
+    };
 
     rsx! {
-        div { class: "flex flex-col {align_class} gap-1 w-full max-w-full",
+        div { class: "flex flex-col {align_class} gap-0 w-full max-w-full",
+            if show_sender_name {
+                div { class: "{name_wrap_class}",
+                    div {
+                        class: "text-sm mb-1",
+                        style: "color: rgb(167, 167, 167);",
+                        if is_self {
+                            "{user_profile.name}"
+                        } else {
+                            "{sender_name}"
+                        }
+                    }
+                }
+            }
             div { class: "relative w-full min-w-0 {row_align_class}",
                 if show_avatar {
                     div { class: "w-14 h-14 bg-gray-600 border border-gray-500 shrink-0 flex items-center justify-center text-xs text-gray-300 rounded-sm overflow-hidden {avatar_slot_class}",
@@ -541,16 +619,14 @@ fn MessageBubble(
                             } else {
                                 "Me"
                             }
+                        } else if !sender_avatar.is_empty() {
+                            img {
+                                src: "{sender_avatar}",
+                                class: "w-full h-full object-cover",
+                            }
                         } else {
-                            if !operator.avatar_url.is_empty() {
-                                img {
-                                    src: "{operator.avatar_url}",
-                                    class: "w-full h-full object-cover",
-                                }
-                            } else {
-                                span { class: "text-2xl font-bold",
-                                    "{operator.name.chars().next().unwrap_or('?')}"
-                                }
+                            span { class: "text-2xl font-bold",
+                                "{sender_name.chars().next().unwrap_or('?')}"
                             }
                         }
                     }
