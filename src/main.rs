@@ -21,9 +21,26 @@ const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 
 fn main() {
-    // The `launch` function is the main entry point for a dioxus app. It takes a component and renders it with the platform feature
-    // you have enabled
+    #[cfg(all(not(target_arch = "wasm32"), feature = "desktop"))]
+    {
+        let icon = load_window_icon();
+        let cfg = dioxus::desktop::Config::new().with_icon(icon);
+        dioxus::LaunchBuilder::desktop().with_cfg(cfg).launch(App);
+    }
+
+    #[cfg(any(target_arch = "wasm32", not(feature = "desktop")))]
     dioxus::launch(App);
+}
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "desktop"))]
+fn load_window_icon() -> dioxus::desktop::tao::window::Icon {
+    let bytes = include_bytes!("../icons/icon.png");
+    let image = image::load_from_memory(bytes)
+        .expect("icon decode failed")
+        .into_rgba8();
+    let (width, height) = image.dimensions();
+    let rgba = image.into_raw();
+    dioxus::desktop::tao::window::Icon::from_rgba(rgba, width, height).expect("icon rgba failed")
 }
 
 /// App is the main component of our app. Components are the building blocks of dioxus apps. Each component is a function

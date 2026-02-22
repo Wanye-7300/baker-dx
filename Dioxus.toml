@@ -26,6 +26,8 @@ script = []
 identifier = "xyz.wanye7300"
 publisher = "Wanye_7300"
 icon = ["icons/icon.ico", "icons/icon.png"]
-resources = ["assets/"]
 copyright = "Copyright (c) 2026 Wanye_7300"
 category = "Utility"
+
+[bundle.windows]
+icon_path = "icons/icon.ico"
