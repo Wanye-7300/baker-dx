@@ -444,6 +444,34 @@ pub fn BakerLayout() -> Element {
         }
     };
 
+    let mut clear_messages = {
+        let mut cancel_replay = cancel_replay;
+        let mut app_state = app_state;
+        let selected_contact_id = selected_contact_id;
+        move || {
+            if let Some(contact_id) = selected_contact_id() {
+                let mut state = app_state.write();
+                state.messages.insert(contact_id, Vec::new());
+                cancel_replay();
+            }
+        }
+    };
+
+    let mut clear_chat = {
+        let mut cancel_replay = cancel_replay;
+        let mut app_state = app_state;
+        let mut selected_contact_id = selected_contact_id;
+        move || {
+            if let Some(contact_id) = selected_contact_id() {
+                let mut state = app_state.write();
+                state.messages.remove(&contact_id);
+                state.contacts.retain(|c| c.id != contact_id);
+                selected_contact_id.set(None);
+                cancel_replay();
+            }
+        }
+    };
+
     use_effect(move || {
         let current = selected_contact_id();
         if let Some(replay) = replay_active() {
@@ -786,6 +814,8 @@ pub fn BakerLayout() -> Element {
                                 on_insert_message: insert_message,
                                 on_start_replay: move |msg_id| replay_request_msg_id.set(Some(msg_id)),
                                 on_update_chat_head_style: update_chat_head_style,
+                                on_clear_messages: move |_| clear_messages(),
+                                on_clear_chat: move |_| clear_chat(),
                             }
                         }
                     }

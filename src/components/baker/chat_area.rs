@@ -43,6 +43,8 @@ pub fn ChatArea(
     on_insert_message: EventHandler<(String, String, bool)>,
     on_start_replay: EventHandler<String>,
     on_update_chat_head_style: EventHandler<ChatHeadStyle>,
+    on_clear_messages: EventHandler<()>,
+    on_clear_chat: EventHandler<()>,
 ) -> Element {
     let messages_list = messages.read().clone();
     let mut context_menu = use_signal(|| Option::<(i32, i32, String)>::None);
@@ -349,6 +351,23 @@ pub fn ChatArea(
                                         header_menu_open.set(false);
                                     },
                                     "会话头样式 2"
+                                }
+                                div { class: "h-px bg-gray-600 my-1" }
+                                div {
+                                    class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
+                                    onclick: move |_| {
+                                        on_clear_messages.call(());
+                                        header_menu_open.set(false);
+                                    },
+                                    "清除聊天内容"
+                                }
+                                div {
+                                    class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
+                                    onclick: move |_| {
+                                        on_clear_chat.call(());
+                                        header_menu_open.set(false);
+                                    },
+                                    "清除聊天内容和会话"
                                 }
                             }
                         }
