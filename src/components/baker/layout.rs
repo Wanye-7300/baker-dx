@@ -4,16 +4,19 @@ use crate::components::baker::modals::{
     ReplaySettingsModal, SettingsModal, TutorialModal, UpdateAvailableModal,
 };
 use crate::components::baker::models::{
-    BackgroundMode, ChatHeadStyle, Contact, Message, MessageKind,
+    AppState, BackgroundMode, ChatHeadStyle, Contact, Message, MessageKind,
 };
 use crate::components::baker::sidebar::Sidebar;
 use crate::components::baker::storage::{load_state, save_state};
+use crate::components::llm::deepseek::{ChatMessage, DeepseekLLMProvider};
 use chrono::Utc;
 use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use gloo_timers::future::TimeoutFuture;
 use reqwest::Client;
 use serde::Deserialize;
+use std::cell::RefCell;
+use std::rc::Rc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
@@ -22,6 +25,7 @@ use uuid::Uuid;
 
 const MESSAGE_SOUND: Asset = asset!("/assets/sound/message.mp3");
 const MESSAGE_SELF_SOUND: Asset = asset!("/assets/sound/message-self.mp3");
+const LLM_MESSAGE_DELIMITER: &str = "<msgend/>";
 
 fn play_message_sound(is_self: bool) {
     let sound_src = if is_self {
@@ -73,6 +77,70 @@ async fn sleep_ms(ms: u64) {
 #[cfg(not(target_arch = "wasm32"))]
 async fn sleep_ms(ms: u64) {
     sleep(Duration::from_millis(ms)).await;
+}
+
+fn insert_llm_pending_message(
+    mut app_state: Signal<AppState>,
+    mut llm_pending: Signal<Option<PendingTyping>>,
+    contact_id: String,
+) -> String {
+    let new_id = Uuid::new_v4().to_string();
+    {
+        let mut state = app_state.write();
+        let messages = state.messages.entry(contact_id.clone()).or_default();
+        messages.push(Message {
+            id: new_id.clone(),
+            sender_id: contact_id.clone(),
+            content: String::new(),
+            kind: MessageKind::Normal,
+            animate: false,
+        });
+    }
+    llm_pending.set(Some(PendingTyping {
+        id: new_id.clone(),
+        phase: ReplayTypingPhase::Typing,
+    }));
+    new_id
+}
+
+fn finalize_llm_message(
+    mut app_state: Signal<AppState>,
+    contact_id: String,
+    msg_id: String,
+    content: String,
+) {
+    {
+        let mut state = app_state.write();
+        if let Some(msgs) = state.messages.get_mut(&contact_id) {
+            if let Some(msg) = msgs.iter_mut().find(|m| m.id == msg_id) {
+                msg.content = content;
+                msg.animate = true;
+            }
+        }
+    }
+    play_message_sound(false);
+    let mut app_state_for_anim = app_state;
+    let contact_id_anim = contact_id.clone();
+    let msg_id_anim = msg_id.clone();
+    spawn(async move {
+        sleep_ms(220).await;
+        if let Some(msgs) = app_state_for_anim
+            .write()
+            .messages
+            .get_mut(&contact_id_anim)
+        {
+            if let Some(msg) = msgs.iter_mut().find(|m| m.id == msg_id_anim) {
+                msg.animate = false;
+            }
+        }
+    });
+}
+
+fn remove_message(mut app_state: Signal<AppState>, contact_id: String, msg_id: String) {
+    let mut state = app_state.write();
+    if let Some(msgs) = state.messages.get_mut(&contact_id) {
+        msgs.retain(|m| m.id != msg_id);
+    }
 }
 
 fn parse_version(input: &str) -> Option<Vec<u64>> {
@@ -172,6 +240,9 @@ pub fn BakerLayout() -> Element {
     let mut replay_messages = use_signal(Vec::<Message>::new);
     let mut replay_token = use_signal(|| 0usize);
     let mut replay_pending = use_signal(|| Option::<PendingTyping>::None);
+    let llm_pending = use_signal(|| Option::<PendingTyping>::None);
+    let llm_active = use_signal(|| Option::<String>::None);
+    let llm_token = use_signal(|| 0usize);
     let mut update_info = use_signal(|| Option::<UpdateInfo>::None);
     let mut update_checked = use_signal(|| false);
 
@@ -244,9 +315,170 @@ pub fn BakerLayout() -> Element {
         });
     };
 
+    let mut start_llm_stream = {
+        let app_state = app_state;
+        let mut llm_active = llm_active;
+        let mut llm_token = llm_token;
+        move |contact_id: String, api_key: String, system_prompt: String, prompt: String| {
+            if llm_active().as_ref() == Some(&contact_id) {
+                return;
+            }
+            let token = llm_token() + 1;
+            llm_token.set(token);
+            llm_active.set(Some(contact_id.clone()));
+            let mut app_state_stream = app_state;
+            let mut llm_pending_stream = llm_pending;
+            let llm_token_stream = llm_token;
+            let mut llm_active_stream = llm_active;
+            spawn(async move {
+                let provider = DeepseekLLMProvider::new(api_key);
+                let request_messages = if system_prompt.trim().is_empty() {
+                    vec![ChatMessage {
+                        role: "user".to_string(),
+                        content: prompt,
+                    }]
+                } else {
+                    vec![
+                        ChatMessage {
+                            role: "system".to_string(),
+                            content: system_prompt,
+                        },
+                        ChatMessage {
+                            role: "user".to_string(),
+                            content: prompt,
+                        },
+                    ]
+                };
+                let buffer = Rc::new(RefCell::new(String::new()));
+                let delimiter = LLM_MESSAGE_DELIMITER.to_string();
+                let current_msg_id = Rc::new(RefCell::new(insert_llm_pending_message(
+                    app_state_stream,
+                    llm_pending_stream,
+                    contact_id.clone(),
+                )));
+                let buffer_stream = buffer.clone();
+                let current_msg_id_stream = current_msg_id.clone();
+                let contact_id_stream = contact_id.clone();
+                let delimiter_stream = delimiter.clone();
+                let app_state_stream_for_closure = app_state_stream;
+                let mut llm_pending_stream_for_closure = llm_pending_stream;
+                let stream_result = provider
+                    .stream_chat_completions(request_messages, move |delta| {
+                        if llm_token_stream() != token {
+                            return;
+                        }
+                        let mut buffer = buffer_stream.borrow_mut();
+                        buffer.push_str(&delta);
+                        while let Some(idx) = buffer.find(&delimiter_stream) {
+                            let content = buffer[..idx].to_string();
+                            buffer.replace_range(..idx + delimiter_stream.len(), "");
+                            let msg_id_value = current_msg_id_stream.borrow().clone();
+                            if content.trim().is_empty() {
+                                remove_message(
+                                    app_state_stream_for_closure,
+                                    contact_id_stream.clone(),
+                                    msg_id_value.clone(),
+                                );
+                            } else {
+                                finalize_llm_message(
+                                    app_state_stream_for_closure,
+                                    contact_id_stream.clone(),
+                                    msg_id_value.clone(),
+                                    content,
+                                );
+                            }
+                            llm_pending_stream_for_closure.set(None);
+                            let new_id = insert_llm_pending_message(
+                                app_state_stream_for_closure,
+                                llm_pending_stream_for_closure,
+                                contact_id_stream.clone(),
+                            );
+                            *current_msg_id_stream.borrow_mut() = new_id;
+                        }
+                    })
+                    .await;
+                if llm_token_stream() != token {
+                    return;
+                }
+                if let Err(_err) = stream_result {
+                    remove_message(
+                        app_state_stream,
+                        contact_id.clone(),
+                        current_msg_id.borrow().clone(),
+                    );
+                    llm_pending_stream.set(None);
+                    llm_active_stream.set(None);
+                    return;
+                }
+                let buffer_left = buffer.borrow().clone();
+                if !buffer_left.trim().is_empty() {
+                    finalize_llm_message(
+                        app_state_stream,
+                        contact_id.clone(),
+                        current_msg_id.borrow().clone(),
+                        buffer_left,
+                    );
+                } else {
+                    let mut state = app_state_stream.write();
+                    if let Some(msgs) = state.messages.get_mut(&contact_id) {
+                        let msg_id_value = current_msg_id.borrow().clone();
+                        if let Some(msg) = msgs.iter().find(|m| m.id == msg_id_value) {
+                            if msg.content.trim().is_empty() {
+                                msgs.retain(|m| m.id != msg_id_value);
+                            }
+                        }
+                    }
+                }
+                llm_pending_stream.set(None);
+                llm_active_stream.set(None);
+            });
+        }
+    };
+
     let handle_send = move |content: String| {
+        let contact_id = match selected_contact_id() {
+            Some(id) => id,
+            None => return,
+        };
+        let contact = app_state
+            .read()
+            .contacts
+            .iter()
+            .find(|c| c.id == contact_id)
+            .cloned();
+        let Some(contact) = contact else { return };
         let user_id = app_state.read().user_profile.id.clone();
-        add_message(user_id, content, MessageKind::Normal);
+        if contact.is_llm {
+            if llm_active().as_ref() == Some(&contact.id) {
+                return;
+            }
+            add_message(user_id.clone(), content.clone(), MessageKind::Normal);
+            let api_key = app_state
+                .read()
+                .operators
+                .iter()
+                .find(|op| op.id == contact.id)
+                .map(|op| op.llm_api_key.clone())
+                .unwrap_or_default();
+            if api_key.trim().is_empty() {
+                add_message(
+                    user_id.clone(),
+                    "未设置 DeepSeek API Key".to_string(),
+                    MessageKind::Status,
+                );
+                return;
+            }
+            let system_prompt = app_state
+                .read()
+                .operators
+                .iter()
+                .find(|op| op.id == contact.id)
+                .map(|op| op.llm_system_prompt.clone())
+                .unwrap_or_default();
+            start_llm_stream(contact.id, api_key, system_prompt, content);
+        } else {
+            add_message(user_id, content, MessageKind::Normal);
+        }
     };
 
     let mut handle_send_other = move |sender_id: String, content: String| {
@@ -344,6 +576,7 @@ pub fn BakerLayout() -> Element {
                         avatar_url: op.avatar_url.clone(),
                         participant_ids: vec![op_id.clone()],
                         is_group: false,
+                        is_llm: op.is_llm,
                     });
                 }
                 selected_contact_id.set(Some(op_id));
@@ -363,6 +596,7 @@ pub fn BakerLayout() -> Element {
                     avatar_url,
                     participant_ids: member_ids,
                     is_group: true,
+                    is_llm: false,
                 });
                 selected_contact_id.set(Some(group_id));
                 show_new_chat.set(false);
@@ -472,8 +706,28 @@ pub fn BakerLayout() -> Element {
         }
     };
 
+    let mut cancel_llm = {
+        let mut llm_pending = llm_pending;
+        let mut llm_active = llm_active;
+        let mut llm_token = llm_token;
+        let mut app_state = app_state;
+        move || {
+            llm_token.set(llm_token() + 1);
+            if let Some(contact_id) = llm_active() {
+                if let Some(pending) = llm_pending() {
+                    if let Some(msgs) = app_state.write().messages.get_mut(&contact_id) {
+                        msgs.retain(|m| m.id != pending.id);
+                    }
+                }
+            }
+            llm_pending.set(None);
+            llm_active.set(None);
+        }
+    };
+
     let mut clear_messages = {
         let mut cancel_replay = cancel_replay;
+        let mut cancel_llm = cancel_llm;
         let mut app_state = app_state;
         let selected_contact_id = selected_contact_id;
         move || {
@@ -481,12 +735,14 @@ pub fn BakerLayout() -> Element {
                 let mut state = app_state.write();
                 state.messages.insert(contact_id, Vec::new());
                 cancel_replay();
+                cancel_llm();
             }
         }
     };
 
     let mut clear_chat = {
         let mut cancel_replay = cancel_replay;
+        let mut cancel_llm = cancel_llm;
         let mut app_state = app_state;
         let mut selected_contact_id = selected_contact_id;
         move || {
@@ -496,6 +752,7 @@ pub fn BakerLayout() -> Element {
                 state.contacts.retain(|c| c.id != contact_id);
                 selected_contact_id.set(None);
                 cancel_replay();
+                cancel_llm();
             }
         }
     };
@@ -512,11 +769,21 @@ pub fn BakerLayout() -> Element {
         }
     });
 
+    use_effect(move || {
+        let current = selected_contact_id();
+        if let Some(active_id) = llm_active() {
+            if Some(active_id) != current {
+                cancel_llm();
+            }
+        }
+    });
+
     let mut start_replay = {
         let mut replay_messages = replay_messages;
         let mut replay_active = replay_active;
         let mut replay_token = replay_token;
         let mut replay_pending = replay_pending;
+        let mut cancel_llm = cancel_llm;
         let app_state = app_state;
         let selected_contact_id = selected_contact_id;
         move |start_msg_id: String, settings: ReplaySettings| {
@@ -524,6 +791,7 @@ pub fn BakerLayout() -> Element {
                 Some(id) => id,
                 None => return,
             };
+            cancel_llm();
             let all_messages = app_state
                 .read()
                 .messages
@@ -654,12 +922,17 @@ pub fn BakerLayout() -> Element {
 
     let user_profile = app_state.read().user_profile.clone();
     let hide_tutorial = app_state.read().hide_tutorial;
-    let replay_pending_for_contact = use_memo(move || {
+    let pending_typing_for_contact = use_memo(move || {
         if let Some(replay) = replay_active() {
             if let Some(selected_id) = selected_contact_id() {
                 if replay.contact_id == selected_id {
                     return replay_pending();
                 }
+            }
+        }
+        if let Some(active_id) = llm_active() {
+            if Some(active_id) == selected_contact_id() {
+                return llm_pending();
             }
         }
         None
@@ -835,7 +1108,7 @@ pub fn BakerLayout() -> Element {
                                 menu_close_token,
                                 first_prev_sender_id: replay_prev_sender_id,
                                 force_first_avatar,
-                                pending_typing: replay_pending_for_contact,
+                                pending_typing: pending_typing_for_contact,
                                 on_send_message: handle_send,
                                 on_send_other_message: move |(sender_id, text)| {
                                     handle_send_other(sender_id, text);

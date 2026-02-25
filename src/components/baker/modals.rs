@@ -161,19 +161,41 @@ pub fn SettingsModal(
 ) -> Element {
     let mut new_name = use_signal(|| "".to_string());
     let mut new_avatar_preview = use_signal(|| "".to_string());
+    let mut new_is_llm = use_signal(|| false);
+    let mut new_api_key = use_signal(|| "".to_string());
+    let mut new_system_prompt = use_signal(|| {
+        "你是 Baker 中的 LLM 对话对象。请使用简洁自然的中文回复。一次输出多条消息时，使用 <msgend/> 分隔每条消息。".to_string()
+    });
 
     let handle_add = move |_| {
         let name = new_name();
         let avatar = new_avatar_preview();
+        let is_llm = new_is_llm();
+        let api_key = if is_llm {
+            new_api_key()
+        } else {
+            "".to_string()
+        };
+        let system_prompt = if is_llm {
+            new_system_prompt()
+        } else {
+            "".to_string()
+        };
         if !name.is_empty() {
             let id = Uuid::new_v4().to_string();
             operators.write().push(Operator {
                 id,
                 name,
                 avatar_url: avatar,
+                is_llm,
+                llm_api_key: api_key,
+                llm_system_prompt: system_prompt,
             });
             new_name.set("".to_string());
             new_avatar_preview.set("".to_string());
+            new_is_llm.set(false);
+            new_api_key.set("".to_string());
+            new_system_prompt.set("你是 Baker 中的 LLM 对话对象。请使用简洁自然的中文回复。一次输出多条消息时，使用 <msgend/> 分隔每条消息。".to_string());
         }
     };
 
@@ -252,6 +274,29 @@ pub fn SettingsModal(
                                         });
                                     }
                                 },
+                            }
+                            label { class: "flex items-center gap-2 text-gray-300 text-sm cursor-pointer select-none",
+                                input {
+                                    r#type: "checkbox",
+                                    class: "w-4 h-4 accent-blue-600",
+                                    checked: new_is_llm(),
+                                    onclick: move |_| new_is_llm.set(!new_is_llm()),
+                                }
+                                span { "LLM 对话" }
+                            }
+                            if new_is_llm() {
+                                input {
+                                    class: "w-full bg-[#222] border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500",
+                                    placeholder: "DeepSeek API Key",
+                                    value: "{new_api_key}",
+                                    oninput: move |e| new_api_key.set(e.value()),
+                                }
+                                textarea {
+                                    class: "w-full h-24 bg-[#222] border border-gray-600 rounded p-3 text-white text-sm focus:outline-none focus:border-blue-500 resize-none",
+                                    placeholder: "System Prompt",
+                                    value: "{new_system_prompt}",
+                                    oninput: move |e| new_system_prompt.set(e.value()),
+                                }
                             }
                         }
                         button {

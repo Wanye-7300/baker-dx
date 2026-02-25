@@ -20,6 +20,8 @@ pub struct Contact {
     pub participant_ids: Vec<String>,
     #[serde(default)]
     pub is_group: bool,
+    #[serde(default)]
+    pub is_llm: bool,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, Default)]
@@ -46,6 +48,12 @@ pub struct Operator {
     pub id: String,
     pub name: String,
     pub avatar_url: String,
+    #[serde(default)]
+    pub is_llm: bool,
+    #[serde(default)]
+    pub llm_api_key: String,
+    #[serde(default)]
+    pub llm_system_prompt: String,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]

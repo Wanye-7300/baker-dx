@@ -69,6 +69,9 @@ fn migrate_legacy_state(legacy: LegacyAppState) -> AppState {
                 id: new_id,
                 name: op.name,
                 avatar_url: op.avatar_url,
+                is_llm: false,
+                llm_api_key: String::new(),
+                llm_system_prompt: String::new(),
             }
         })
         .collect::<Vec<_>>();
@@ -98,6 +101,7 @@ fn migrate_legacy_state(legacy: LegacyAppState) -> AppState {
                 avatar_url: avatar,
                 participant_ids: vec![new_id],
                 is_group: false,
+                is_llm: false,
             }
         })
         .collect::<Vec<_>>();
