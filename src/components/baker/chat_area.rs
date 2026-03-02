@@ -1,6 +1,7 @@
 use crate::components::baker::input_bar::InputBar;
 use crate::components::baker::modals::{
-    EditMessageModal, InsertMessageModal, PickSenderModal, ReactionModal,
+    EditMessageModal, InsertMessageModal, OpsSelection, PickSenderModal, ReactionModal,
+    SetGroupOpsListModal,
 };
 use crate::components::baker::models::{
     ChatHeadStyle, Contact, Message, MessageKind, Operator, UserProfile,
@@ -62,6 +63,7 @@ pub fn ChatArea(
     on_update_chat_head_style: EventHandler<ChatHeadStyle>,
     on_clear_messages: EventHandler<()>,
     on_clear_chat: EventHandler<()>,
+    on_set_group_ops_list: EventHandler<OpsSelection>,
 ) -> Element {
     let messages_list = messages.read().clone();
     let mut context_menu = use_signal(|| Option::<(i32, i32, String)>::None);
@@ -74,6 +76,7 @@ pub fn ChatArea(
     let mut pick_sender_sticker = use_signal(|| Option::<String>::None);
     let mut clear_input_token = use_signal(|| 0usize);
     let mut sticker_menu_state = use_signal(|| Option::<(i32, i32)>::None);
+    let mut show_set_group_ops_list = use_signal(|| false);
 
     use_effect(move || {
         menu_close_token.read();
@@ -400,6 +403,16 @@ pub fn ChatArea(
                     },
                 }
             }
+            if show_set_group_ops_list() {
+                SetGroupOpsListModal {
+                    on_close: move |_| show_set_group_ops_list.set(false),
+                    on_select: move |ops_selection| {
+                        on_set_group_ops_list.call(ops_selection);
+                        show_set_group_ops_list.set(false);
+                    },
+                    selected_contact_id: Some(contact.id.clone()),
+                }
+            }
 
             {context_menu_view}
 
@@ -490,6 +503,22 @@ pub fn ChatArea(
                                         header_menu_open.set(false);
                                     },
                                     "清除聊天内容和会话"
+                                }
+                                {
+                                    if contact.is_group {
+                                        rsx! {
+                                            div {
+                                                class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
+                                                onclick: move |_| {
+                                                    show_set_group_ops_list.set(true);
+                                                    header_menu_open.set(false);
+                                                },
+                                                "更改群组干员名单……"
+                                            }
+                                        }
+                                    } else {
+                                        rsx! {}
+                                    }
                                 }
                             }
                         }

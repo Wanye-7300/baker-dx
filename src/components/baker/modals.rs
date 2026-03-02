@@ -713,6 +713,106 @@ pub fn NewChatModal(
     }
 }
 
+#[derive(PartialEq, Clone)]
+pub(crate) struct OpsSelection {
+    pub ops: Vec<String>,
+}
+
+///
+/// 用于设置特定群聊中干员名单的列表弹窗。
+///
+#[component]
+pub fn SetGroupOpsListModal(
+    on_close: EventHandler,
+    on_select: EventHandler<OpsSelection>,
+    selected_contact_id: Option<String>,
+) -> Element {
+    let app_state = use_context::<Signal<crate::components::baker::models::AppState>>();
+
+    let operators = &app_state.read().operators;
+    let app_state_read = app_state.read();
+    let group_ops_list = match selected_contact_id.clone() {
+        Some(id) => app_state_read.contacts.iter().find(|x| x.id == id),
+        None => None,
+    };
+
+    if group_ops_list.is_none() {
+        return rsx! {
+            Modal {
+                title: "错误",
+                content_confirmation_button: "确定",
+                on_close,
+                on_confirm: move |_| on_close.call(()),
+
+                {
+                    rsx! { "无法找到名单。是否存在这个群聊？" }
+                }
+            }
+        };
+    }
+
+    let mut group_ops_list = use_signal(|| group_ops_list.unwrap().participant_ids.clone());
+
+    rsx! {
+        Modal {
+            title: "设置群组干员列表",
+            content_confirmation_button: "确定",
+            on_close,
+            on_confirm: move |_| {
+                on_select
+                    .call(OpsSelection {
+                        ops: group_ops_list(),
+                    })
+            },
+
+            {
+                rsx! {
+                    div { class: "p-4 max-h-[60vh] overflow-y-auto custom-scrollbar",
+                        div { class: "grid grid-cols-1 gap-2",
+                            for op in operators {
+                                {
+                                    let op_id = op.id.clone();
+                                    let op_name = op.name.clone();
+                                    let op_avatar = op.avatar_url.clone();
+                                    let op_id_for_click = op_id.clone();
+                                    rsx! {
+                                        div {
+                                            class: "flex items-center gap-3 p-3 rounded hover:bg-black/20 transition-colors text-left group",
+                                            onclick: move |_| {
+                                                group_ops_list
+                                                    .with_mut(|list| {
+                                                        if let Some(pos) = list.iter().position(|id| id == &op_id_for_click) {
+                                                            list.remove(pos);
+                                                        } else {
+                                                            list.push(op_id_for_click.clone());
+                                                        }
+                                                    });
+                                            },
+                                            input {
+                                                r#type: "checkbox",
+                                                class: "w-4 h-4 accent-blue-600",
+                                                checked: group_ops_list().contains(&op_id),
+                                            }
+                                            div { class: "w-10 h-10 rounded bg-gray-600 flex items-center justify-center overflow-hidden border border-gray-500 group-hover:border-blue-500",
+                                                if !op_avatar.is_empty() {
+                                                    img { src: "{op_avatar}", class: "w-full h-full object-cover" }
+                                                } else {
+                                                    span { class: "text-white font-bold", "{op_name.chars().next().unwrap_or('?')}" }
+                                                }
+                                            }
+                                            span { class: "text-black font-medium", "{op_name}" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 const IMAGE_TUTORIAL_1: Asset = asset!("/tutorial/1.png");
 const IMAGE_TUTORIAL_2: Asset = asset!("/tutorial/2.png");
 const IMAGE_TUTORIAL_3: Asset = asset!("/tutorial/3.png");

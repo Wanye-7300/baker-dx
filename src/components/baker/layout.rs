@@ -1,6 +1,6 @@
 use crate::components::baker::chat_area::{ChatArea, PendingTyping, ReplayTypingPhase};
 use crate::components::baker::modals::{
-    NewChatModal, NewChatSelection, ProfileModal, ReplayIntervalMode, ReplaySettings,
+    NewChatModal, NewChatSelection, OpsSelection, ProfileModal, ReplayIntervalMode, ReplaySettings,
     ReplaySettingsModal, TutorialModal, UpdateAvailableModal,
 };
 use crate::components::baker::models::{
@@ -564,6 +564,26 @@ pub fn BakerLayout() -> Element {
         }
     };
 
+    let set_group_ops_list = {
+        let mut app_state = app_state;
+        let selected_contact_id = selected_contact_id;
+        move |ops_selection: OpsSelection| {
+            if let Some(contact_id) = selected_contact_id() {
+                let mut state = app_state.write();
+                let contact = state.contacts.iter_mut().find(|x| x.id == contact_id);
+
+                if contact.is_none() {
+                    error!("Failed to find contact {}", contact_id);
+                    return;
+                }
+
+                let contact = contact.unwrap();
+
+                contact.participant_ids = ops_selection.ops;
+            }
+        }
+    };
+
     use_effect(move || {
         let current = selected_contact_id();
         if let Some(replay) = replay_active() {
@@ -932,6 +952,7 @@ pub fn BakerLayout() -> Element {
                                 on_update_chat_head_style: update_chat_head_style,
                                 on_clear_messages: move |_| clear_messages(),
                                 on_clear_chat: move |_| clear_chat(),
+                                on_set_group_ops_list: set_group_ops_list,
                             }
                         }
                     }
