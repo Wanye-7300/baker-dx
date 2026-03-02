@@ -639,17 +639,15 @@ pub fn BakerLayout() -> Element {
                         schedule_animate_off_in_list(replay_messages_async, msg.id);
                         continue;
                     }
-                    let typing_ms = if matches!(msg.kind, MessageKind::Image) {
-                        // 图片消息内容是 data URL，字符数极大，按字数模式下强制走固定时长
-                        settings_clone.fixed_ms
-                    } else {
-                        match settings_clone.mode {
+                    let typing_ms = match msg.kind {
+                        MessageKind::Image | MessageKind::Sticker => settings_clone.fixed_ms,
+                        _ => match settings_clone.mode {
                             ReplayIntervalMode::Fixed => settings_clone.fixed_ms,
                             ReplayIntervalMode::PerChar => {
                                 let len = msg.content.chars().count() as u64;
                                 len.saturating_mul(settings_clone.per_char_ms)
                             }
-                        }
+                        },
                     };
                     let is_other = msg.sender_id != user_id;
                     if is_other {
