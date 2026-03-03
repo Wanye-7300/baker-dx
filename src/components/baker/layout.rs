@@ -1,3 +1,4 @@
+use crate::components::baker::capture::CapturePage;
 use crate::components::baker::chat_area::{ChatArea, PendingTyping, ReplayTypingPhase};
 use crate::components::baker::modals::{
     NewChatModal, NewChatSelection, OpsSelection, ProfileModal, ReplayIntervalMode, ReplaySettings,
@@ -973,4 +974,6 @@ pub enum Route {
     BakerLayout {},
     #[route("/settings")]
     SettingsPage {},
+    #[route("/capture/:contact_id")]
+    CapturePage { contact_id: String },
 }

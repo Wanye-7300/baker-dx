@@ -1,3 +1,4 @@
+pub mod capture;
 pub mod chat_area;
 pub mod input_bar;
 pub mod layout;
@@ -7,7 +8,7 @@ pub mod settings;
 pub mod sidebar;
 pub mod storage;
 
-use dioxus::document;
+use dioxus::prelude::*;
 pub use layout::Route;
 
 pub(super) fn mime_from_filename(name: &str) -> &'static str {
@@ -44,22 +45,50 @@ pub(super) fn avif_data_url_from_bytes(bytes: Vec<u8>) -> Option<String> {
     Some(data_url_from_bytes("image/avif", out))
 }
 
-pub(super) fn capture(selector: &str) {
+pub(super) async fn capture(selector: &str) -> Option<String> {
     let selector = selector.to_owned();
-    dioxus::core::spawn(async move {
-        let eval = document::eval(&format!(
-            r#"
+    let eval = document::eval(&format!(
+        r#"
             const el = document.querySelector('{}');
+            if (!el) return null;
             const result = await snapdom(el);
-
             const img = await result.toPng();
-            document.body.appendChild(img);
-
-            await result.download({{ format: 'jpg', filename: 'my-capture' }});
+            return img?.src ?? null;
         "#,
-            selector
-        ));
+        selector
+    ));
+    let value = eval.await.ok()?;
+    value.as_str().map(|src| src.to_string())
+}
 
-        let _ = eval.await;
-    });
+pub(super) async fn download_image(src: &str, format: &str, filename: &str) -> anyhow::Result<()> {
+    let eval = document::eval(
+        r#"
+        let src = await dioxus.recv();
+        let format = (await dioxus.recv())?.toLowerCase().trim();
+        let filenameInput = (await dioxus.recv())?.trim();
+        let hasExt = filenameInput.includes(".");
+        let filename = filenameInput.length === 0
+            ? `download.${format || "png"}`
+            : hasExt
+                ? filenameInput
+                : `${filenameInput}.${format || "png"}`;
+        const link = document.createElement("a");
+        link.href = src;
+        link.download = filename;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        return true;
+    "#,
+    );
+
+    eval.send(src.to_string())?;
+    eval.send(format.to_string())?;
+    eval.send(filename.to_string())?;
+
+    eval.await.map_err(|err| anyhow::anyhow!(err.to_string()))?;
+
+    Ok(())
 }

@@ -1,4 +1,3 @@
-use crate::components::baker::capture;
 use crate::components::baker::input_bar::InputBar;
 use crate::components::baker::modals::{
     EditMessageModal, InsertMessageModal, OpsSelection, PickSenderModal, ReactionModal,
@@ -7,6 +6,7 @@ use crate::components::baker::modals::{
 use crate::components::baker::models::{
     ChatHeadStyle, Contact, Message, MessageKind, Operator, UserProfile,
 };
+use crate::components::baker::{capture, download_image, Route};
 use dioxus::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -353,6 +353,8 @@ pub fn ChatArea(
         last_sender_id = Some(msg.sender_id.clone());
     }
 
+    let contact_id = use_signal(|| contact.id.clone());
+
     rsx! {
         div {
             class: "flex-1 flex flex-col h-full relative min-h-0",
@@ -509,7 +511,10 @@ pub fn ChatArea(
                                 div {
                                     class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
                                     onclick: move |_| {
-                                        capture("#chat_area");
+                                        navigator()
+                                            .push(Route::CapturePage {
+                                                contact_id: contact_id(),
+                                            });
                                         header_menu_open.set(false);
                                     },
                                     "导出会话到图片"
@@ -585,6 +590,7 @@ pub fn ChatArea(
                 div {
                     id: "chat-scroll-container",
                     class: "flex-1 overflow-y-auto p-6 mr-3 custom-scrollbar flex flex-col relative z-10",
+                    style: "overflow-x: hidden",
 
                     for row in message_rows {
                         match row {
