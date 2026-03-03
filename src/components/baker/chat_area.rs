@@ -1,3 +1,4 @@
+use crate::components::baker::capture;
 use crate::components::baker::input_bar::InputBar;
 use crate::components::baker::modals::{
     EditMessageModal, InsertMessageModal, OpsSelection, PickSenderModal, ReactionModal,
@@ -355,6 +356,7 @@ pub fn ChatArea(
     rsx! {
         div {
             class: "flex-1 flex flex-col h-full relative min-h-0",
+            id: "chat_area",
             onclick: move |_| {
                 context_menu.set(None);
                 header_menu_open.set(false);
@@ -503,6 +505,14 @@ pub fn ChatArea(
                                         header_menu_open.set(false);
                                     },
                                     "清除聊天内容和会话"
+                                }
+                                div {
+                                    class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
+                                    onclick: move |_| {
+                                        capture("#chat_area");
+                                        header_menu_open.set(false);
+                                    },
+                                    "导出会话到图片"
                                 }
                                 {
                                     if contact.is_group {

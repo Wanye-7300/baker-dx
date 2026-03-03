@@ -7,6 +7,7 @@ pub mod settings;
 pub mod sidebar;
 pub mod storage;
 
+use dioxus::document;
 pub use layout::Route;
 
 pub(super) fn mime_from_filename(name: &str) -> &'static str {
@@ -41,4 +42,24 @@ pub(super) fn avif_data_url_from_bytes(bytes: Vec<u8>) -> Option<String> {
         .write_image(&rgba, width, height, image::ColorType::Rgba8.into())
         .ok()?;
     Some(data_url_from_bytes("image/avif", out))
+}
+
+pub(super) fn capture(selector: &str) {
+    let selector = selector.to_owned();
+    dioxus::core::spawn(async move {
+        let eval = document::eval(&format!(
+            r#"
+            const el = document.querySelector('{}');
+            const result = await snapdom(el);
+
+            const img = await result.toPng();
+            document.body.appendChild(img);
+
+            await result.download({{ format: 'jpg', filename: 'my-capture' }});
+        "#,
+            selector
+        ));
+
+        let _ = eval.await;
+    });
 }

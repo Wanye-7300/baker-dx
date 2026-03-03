@@ -58,6 +58,7 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
         document::Link { rel: "stylesheet", href: MODAL_CSS }
+        document::Script { src: "https://unpkg.com/@zumer/snapdom/dist/snapdom.js" }
         document::Title { "Baker" }
 
         // The router component renders the route enum we defined above. It will handle synchronization of the URL and render
