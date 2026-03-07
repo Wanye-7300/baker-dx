@@ -50,6 +50,7 @@ pub fn ChatArea(
     on_send_other_message: EventHandler<(String, String)>,
     on_send_status: EventHandler<String>,
     on_send_image: EventHandler<String>,
+    on_send_image_other: EventHandler<(String, String)>,
     on_send_sticker: EventHandler<String>,
     on_send_sticker_other: EventHandler<(String, String)>,
     stickers: ReadSignal<Vec<String>>,
@@ -75,6 +76,7 @@ pub fn ChatArea(
     let mut header_menu_open = use_signal(|| false);
     let mut show_pick_sender = use_signal(|| false);
     let mut pick_sender_text = use_signal(|| "".to_string());
+    let mut pick_sender_image = use_signal(|| Option::<String>::None);
     let mut pick_sender_sticker = use_signal(|| Option::<String>::None);
     let mut clear_input_token = use_signal(|| 0usize);
     let mut sticker_menu_state = use_signal(|| Option::<(i32, i32)>::None);
@@ -179,6 +181,9 @@ pub fn ChatArea(
         .iter()
         .filter_map(|id| operators_list.iter().find(|op| op.id == *id).cloned())
         .collect::<Vec<_>>();
+    let contact_is_group = contact.is_group;
+    let contact_id_for_other_text = contact.id.clone();
+    let contact_id_for_other_image = contact.id.clone();
     let context_menu_value = context_menu();
     let context_menu_view = context_menu_value.as_ref().map(|(x, y, msg_id)| {
         let show_reaction = messages_list
@@ -387,11 +392,22 @@ pub fn ChatArea(
             if show_pick_sender() {
                 PickSenderModal {
                     members: selectable_members.clone(),
-                    on_close: move |_| show_pick_sender.set(false),
+                    on_close: move |_| {
+                        pick_sender_text.set("".to_string());
+                        pick_sender_image.set(None);
+                        pick_sender_sticker.set(None);
+                        show_pick_sender.set(false);
+                    },
                     on_send: move |sender_id| {
                         if let Some(sticker) = pick_sender_sticker() {
                             on_send_sticker_other.call((sender_id, sticker));
                             pick_sender_sticker.set(None);
+                            show_pick_sender.set(false);
+                            return;
+                        }
+                        if let Some(image_data_url) = pick_sender_image() {
+                            on_send_image_other.call((sender_id, image_data_url));
+                            pick_sender_image.set(None);
                             show_pick_sender.set(false);
                             return;
                         }
@@ -657,17 +673,29 @@ pub fn ChatArea(
                         InputBar {
                             on_send: move |text| on_send_message.call(text),
                             on_send_other: move |text| {
-                                if contact.is_group {
+                                if contact_is_group {
                                     pick_sender_text.set(text);
                                     show_pick_sender.set(true);
                                 } else {
-                                    on_send_other_message.call((contact.id.clone(), text));
+                                    on_send_other_message.call((contact_id_for_other_text.clone(), text));
                                     clear_input_token.set(clear_input_token() + 1);
                                 }
                             },
-                            is_group: contact.is_group,
+                            is_group: contact_is_group,
                             on_send_status: move |text| on_send_status.call(text),
-                            on_send_image: move |data_url| on_send_image.call(data_url),
+                            on_send_image: move |(data_url, is_ctrl)| {
+                                if is_ctrl {
+                                    if contact_is_group {
+                                        pick_sender_image.set(Some(data_url));
+                                        show_pick_sender.set(true);
+                                    } else {
+                                        on_send_image_other
+                                            .call((contact_id_for_other_image.clone(), data_url));
+                                    }
+                                } else {
+                                    on_send_image.call(data_url);
+                                }
+                            },
                             on_send_sticker: move |(sticker_src, is_ctrl)| {
                                 if is_ctrl {
                                     pick_sender_sticker.set(Some(sticker_src));

@@ -277,6 +277,9 @@ pub fn BakerLayout() -> Element {
         let user_id = app_state.read().user_profile.id.clone();
         add_message(user_id, data_url, MessageKind::Image);
     };
+    let mut handle_send_image_other = move |sender_id: String, data_url: String| {
+        add_message(sender_id, data_url, MessageKind::Image);
+    };
 
     let handle_send_sticker = move |sticker_src: String| {
         let user_id = app_state.read().user_profile.id.clone();
@@ -940,6 +943,9 @@ pub fn BakerLayout() -> Element {
                                 },
                                 on_send_status: handle_send_status,
                                 on_send_image: handle_send_image,
+                                on_send_image_other: move |(sender_id, data_url)| {
+                                    handle_send_image_other(sender_id, data_url);
+                                },
                                 on_send_sticker: handle_send_sticker,
                                 on_send_sticker_other: move |(sender_id, sticker)| {
                                     handle_send_sticker_other(sender_id, sticker);

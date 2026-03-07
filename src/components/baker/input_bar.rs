@@ -19,7 +19,7 @@ pub fn InputBar(
     on_send_other: EventHandler<String>,
     is_group: bool,
     on_send_status: EventHandler<String>,
-    on_send_image: EventHandler<String>,
+    on_send_image: EventHandler<(String, bool)>,
     on_send_sticker: EventHandler<(String, bool)>,
     stickers: ReadSignal<Vec<String>>,
     on_add_sticker: EventHandler<String>,
@@ -32,6 +32,7 @@ pub fn InputBar(
     let mut send_menu = use_signal(|| Option::<(i32, i32)>::None);
     let mut plus_menu = use_signal(|| Option::<(i32, i32)>::None);
     let mut image_input_token = use_signal(|| 0usize);
+    let mut image_send_other = use_signal(|| false);
     let mut sticker_input_token = use_signal(|| 0usize);
 
     let mut handle_submit = move || {
@@ -118,26 +119,33 @@ pub fn InputBar(
                             r#type: "file",
                             accept: "image/*",
                             class: "absolute inset-0 opacity-0 cursor-pointer",
+                            onclick: move |evt| {
+                                image_send_other.set(evt.modifiers().ctrl());
+                            },
                             onchange: move |evt| {
                                 let files: Vec<FileData> = evt.files();
                                 if let Some(file) = files.first().cloned() {
+                                    let send_other = image_send_other();
                                     let file_name: String = file.name();
                                     let mime = file
                                         .content_type()
                                         .unwrap_or_else(|| mime_from_filename(&file_name).to_string());
                                     let mut token = image_input_token;
+                                    let mut image_send_other = image_send_other;
                                     let send_image = on_send_image;
                                     spawn(async move {
                                         if let Ok(bytes) = file.read_bytes().await {
                                             let bytes_vec = bytes.to_vec();
                                             let data_url = avif_data_url_from_bytes(bytes_vec.clone())
                                                 .unwrap_or_else(|| data_url_from_bytes(&mime, bytes_vec));
-                                            send_image.call(data_url);
+                                            send_image.call((data_url, send_other));
                                             token.set(token() + 1);
+                                            image_send_other.set(false);
                                         }
                                     });
                                 } else {
                                     image_input_token.set(image_input_token() + 1);
+                                    image_send_other.set(false);
                                 }
                                 plus_menu.set(None);
                             },
