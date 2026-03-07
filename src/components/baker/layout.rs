@@ -917,9 +917,10 @@ pub fn BakerLayout() -> Element {
                                     None
                                 }
                             });
-                        let force_first_avatar = replay_active()
+                        let is_replaying = replay_active()
                             .map(|replay| replay.contact_id == contact.id)
                             .unwrap_or(false);
+                        let force_first_avatar = is_replaying;
                         rsx! {
                             ChatArea {
                                 contact,
@@ -949,6 +950,8 @@ pub fn BakerLayout() -> Element {
                                 on_delete_reaction: delete_reaction,
                                 on_insert_message: insert_message,
                                 on_start_replay: move |msg_id| replay_request_msg_id.set(Some(msg_id)),
+                                is_replaying,
+                                on_exit_replay: move |_| cancel_replay(),
                                 on_update_chat_head_style: update_chat_head_style,
                                 on_clear_messages: move |_| clear_messages(),
                                 on_clear_chat: move |_| clear_chat(),

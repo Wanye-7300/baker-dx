@@ -60,6 +60,8 @@ pub fn ChatArea(
     on_delete_reaction: EventHandler<String>,
     on_insert_message: EventHandler<(String, String, Option<String>)>,
     on_start_replay: EventHandler<String>,
+    is_replaying: bool,
+    on_exit_replay: EventHandler<()>,
     on_update_chat_head_style: EventHandler<ChatHeadStyle>,
     on_clear_messages: EventHandler<()>,
     on_clear_chat: EventHandler<()>,
@@ -503,6 +505,16 @@ pub fn ChatArea(
                                         header_menu_open.set(false);
                                     },
                                     "清除聊天内容和会话"
+                                }
+                                if is_replaying {
+                                    div {
+                                        class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
+                                        onclick: move |_| {
+                                            on_exit_replay.call(());
+                                            header_menu_open.set(false);
+                                        },
+                                        "退出回放"
+                                    }
                                 }
                                 {
                                     if contact.is_group {
