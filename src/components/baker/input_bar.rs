@@ -256,9 +256,11 @@ pub fn InputBar(
         if !val.trim().is_empty() {
             on_send_other.call(val);
             need_to_scroll_down.set(true);
-            text.set(String::new());
-            active_emoji_completion.set(0);
-            dismissed_emoji_completion.set(None);
+            if !is_group {
+                text.set(String::new());
+                active_emoji_completion.set(0);
+                dismissed_emoji_completion.set(None);
+            }
         }
     };
     let mut handle_submit_status = move || {
