@@ -1,5 +1,6 @@
 pub mod capture;
 pub mod chat_area;
+pub mod context_menu;
 pub mod input_bar;
 pub mod layout;
 pub mod locale;

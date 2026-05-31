@@ -1,4 +1,5 @@
 use crate::components::assets::emojis::{EMOJI_KEYS, to_emoji};
+use crate::components::baker::context_menu::{ContextMenu, ContextMenuItem};
 use crate::components::baker::locale::use_locale_refresh;
 use crate::components::baker::{data_url_from_bytes, mime_from_filename};
 use crate::dioxus_elements::FileData;
@@ -12,12 +13,6 @@ struct EmojiCompletion {
     start: usize,
     query: String,
     keys: Vec<&'static str>,
-}
-
-fn menu_style(x: i32, y: i32, width: i32, height: i32) -> String {
-    format!(
-        "left: clamp(8px, {x}px, calc(100vw - {width}px - 8px)); top: clamp(8px, {y}px, calc(100vh - {height}px - 8px));"
-    )
 }
 
 fn emoji_completion_for(text: &str) -> Option<EmojiCompletion> {
@@ -335,13 +330,13 @@ pub fn InputBar(
             }
 
             if let Some((x, y)) = send_menu() {
-                div {
-                    class: "fixed z-[100] bg-[#2b2b2b] border border-gray-600 rounded shadow-xl py-1 w-36",
-                    style: "{menu_style(x, y, 144, 96)}",
-                    onclick: |e| e.stop_propagation(),
-                    div {
-                        class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                        onclick: move |_| {
+                ContextMenu {
+                    x,
+                    y,
+                    width: 144,
+                    height: 96,
+                    ContextMenuItem {
+                        on_select: move |_| {
                             handle_submit_other();
                             send_menu.set(None);
                         },
@@ -351,9 +346,8 @@ pub fn InputBar(
                             "{send_for_other_label}"
                         }
                     }
-                    div {
-                        class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                        onclick: move |_| {
+                    ContextMenuItem {
+                        on_select: move |_| {
                             handle_submit_status();
                             send_menu.set(None);
                         },
@@ -363,12 +357,14 @@ pub fn InputBar(
             }
 
             if let Some((x, y)) = plus_menu() {
-                div {
-                    class: "fixed z-[100] bg-[#2b2b2b] border border-gray-600 rounded shadow-xl py-1 w-36",
-                    style: "{menu_style(x, y, 144, 56)}",
-                    onclick: |e| e.stop_propagation(),
-                    div { class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors relative overflow-hidden",
-                        "{send_image_label}"
+                ContextMenu {
+                    x,
+                    y,
+                    width: 144,
+                    height: 56,
+                    ContextMenuItem {
+                        extra_class: Some("relative overflow-hidden".to_string()),
+                        on_select: move |_| {},
                         input {
                             key: "{image_input_token()}",
                             r#type: "file",
@@ -404,6 +400,7 @@ pub fn InputBar(
                                 plus_menu.set(None);
                             },
                         }
+                        "{send_image_label}"
                     }
                 }
             }

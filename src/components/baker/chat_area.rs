@@ -1,5 +1,6 @@
 use crate::components::assets::emojis::to_emoji;
 use crate::components::baker::Route;
+use crate::components::baker::context_menu::{ContextMenu, ContextMenuItem};
 use crate::components::baker::input_bar::InputBar;
 use crate::components::baker::locale::use_locale_refresh;
 use crate::components::baker::modals::{
@@ -25,12 +26,6 @@ const MESSAGE_AVATAR_SIZE: i32 = 56;
 const MESSAGE_AVATAR_FRAME_SIZE: i32 = 98;
 const MESSAGE_AVATAR_FRAME_OFFSET: i32 = (MESSAGE_AVATAR_FRAME_SIZE - MESSAGE_AVATAR_SIZE) / 2;
 const MESSAGE_AVATAR_FRAME_VERTICAL_NUDGE: i32 = 3;
-
-fn menu_style(x: i32, y: i32, width: i32, height: i32) -> String {
-    format!(
-        "left: clamp(8px, {x}px, calc(100vw - {width}px - 8px)); top: clamp(8px, {y}px, calc(100vh - {height}px - 8px));"
-    )
-}
 
 const INLINE_EMOJI_STYLE: &str = "display: inline-block; width: 1.6em; height: 1.6em; vertical-align: -0.4em; object-fit: contain;";
 
@@ -286,13 +281,13 @@ pub fn ChatArea(
         let y = *y;
         let msg_id = msg_id.clone();
         rsx! {
-            div {
-                class: "fixed z-[100] bg-[#2b2b2b] border border-gray-600 rounded shadow-xl py-1 w-32",
-                style: "{menu_style(x, y, 128, 256)}",
-                onclick: |e| e.stop_propagation(),
-                div {
-                    class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                    onclick: {
+            ContextMenu {
+                x,
+                y,
+                width: 128,
+                height: 256,
+                ContextMenuItem {
+                    on_select: {
                         let msg_id = msg_id.clone();
                         move |_| {
                             editing_msg_id.set(Some(msg_id.clone()));
@@ -302,9 +297,8 @@ pub fn ChatArea(
                     "{edit_message_label}"
                 }
                 if show_reaction {
-                    div {
-                        class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                        onclick: {
+                    ContextMenuItem {
+                        on_select: {
                             let msg_id = msg_id.clone();
                             move |_| {
                                 reaction_msg_id.set(Some(msg_id.clone()));
@@ -315,18 +309,16 @@ pub fn ChatArea(
                     }
                 }
                 if show_delete_reaction {
-                    div {
-                        class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                        onclick: {
+                    ContextMenuItem {
+                        on_select: {
                             let msg_id = msg_id.clone();
                             move |_| handle_delete_reaction(msg_id.clone())
                         },
                         "{delete_reaction_label}"
                     }
                 }
-                div {
-                    class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                    onclick: {
+                ContextMenuItem {
+                    on_select: {
                         let msg_id = msg_id.clone();
                         move |_| {
                             insert_before_id.set(Some(msg_id.clone()));
@@ -335,9 +327,8 @@ pub fn ChatArea(
                     },
                     "{insert_before_label}"
                 }
-                div {
-                    class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                    onclick: {
+                ContextMenuItem {
+                    on_select: {
                         let msg_id = msg_id.clone();
                         move |_| {
                             on_start_replay.call(msg_id.clone());
@@ -346,9 +337,8 @@ pub fn ChatArea(
                     },
                     "{start_replay_label}"
                 }
-                div {
-                    class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-red-400 text-sm transition-colors",
-                    onclick: {
+                ContextMenuItem {
+                    on_select: {
                         let msg_id = msg_id.clone();
                         move |_| handle_delete(msg_id.clone())
                     },
@@ -601,44 +591,40 @@ pub fn ChatArea(
                         }
                         if header_menu_open() {
                             div {
-                                class: "absolute right-0 top-10 z-50 w-32 bg-[#2b2b2b] border border-gray-600 rounded shadow-xl py-1",
+                                class: "absolute right-0 top-10 z-50 w-32 border border-black/10 shadow-xl py-1 overflow-hidden text-black",
+                                style: "background: rgba(255, 255, 255, 0.78); backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); border-radius: 1px; color: #000; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);",
                                 onclick: |e| e.stop_propagation(),
-                                div {
-                                    class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                                    onclick: move |_| {
+                                ContextMenuItem {
+                                    on_select: move |_| {
                                         on_update_chat_head_style.call(ChatHeadStyle::Default);
                                         header_menu_open.set(false);
                                     },
                                     "{header_style_1_label}"
                                 }
-                                div {
-                                    class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                                    onclick: move |_| {
+                                ContextMenuItem {
+                                    on_select: move |_| {
                                         on_update_chat_head_style.call(ChatHeadStyle::Alt);
                                         header_menu_open.set(false);
                                     },
                                     "{header_style_2_label}"
                                 }
-                                div { class: "h-px bg-gray-600 my-1" }
-                                div {
-                                    class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                                    onclick: move |_| {
+                                div { class: "my-1 h-px bg-black/10" }
+                                ContextMenuItem {
+                                    on_select: move |_| {
                                         on_clear_messages.call(());
                                         header_menu_open.set(false);
                                     },
                                     "{clear_messages_label}"
                                 }
-                                div {
-                                    class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                                    onclick: move |_| {
+                                ContextMenuItem {
+                                    on_select: move |_| {
                                         on_clear_chat.call(());
                                         header_menu_open.set(false);
                                     },
                                     "{clear_chat_label}"
                                 }
-                                div {
-                                    class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                                    onclick: move |_| {
+                                ContextMenuItem {
+                                    on_select: move |_| {
                                         navigator()
                                             .push(Route::CapturePage {
                                                 contact_id: contact_id(),
@@ -648,9 +634,8 @@ pub fn ChatArea(
                                     "{export_image_label}"
                                 }
                                 if is_replaying {
-                                    div {
-                                        class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                                        onclick: move |_| {
+                                    ContextMenuItem {
+                                        on_select: move |_| {
                                             on_exit_replay.call(());
                                             header_menu_open.set(false);
                                         },
@@ -660,17 +645,15 @@ pub fn ChatArea(
                                 {
                                     if contact.is_group {
                                         rsx! {
-                                            div {
-                                                class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                                                onclick: move |_| {
+                                            ContextMenuItem {
+                                                on_select: move |_| {
                                                     show_set_group_ops_list.set(true);
                                                     header_menu_open.set(false);
                                                 },
                                                 "{group_settings_label}"
                                             }
-                                            div {
-                                                class: "px-4 py-2 hover:bg-[#3a3a3a] cursor-pointer text-white text-sm transition-colors",
-                                                onclick: move |_| {
+                                            ContextMenuItem {
+                                                on_select: move |_| {
                                                     show_set_participants_selves_ids.set(true);
                                                     header_menu_open.set(false);
                                                 },
