@@ -1,11 +1,9 @@
 [application]
 
-name = "baker"
-
 [web.app]
 
 # HTML title tag content
-title = "Baker"
+title = "baker-dx"
 
 # include `assets` in web platform
 [web.resource]
@@ -21,13 +19,3 @@ script = []
 # Javascript code file
 # serve: [dev-server] only
 script = []
-
-[bundle]
-identifier = "xyz.wanye7300"
-publisher = "Wanye_7300"
-icon = ["icons/icon.ico", "icons/icon.png"]
-copyright = "Copyright (c) 2026 Wanye_7300"
-category = "Utility"
-
-[bundle.windows]
-icon_path = "icons/icon.ico"
