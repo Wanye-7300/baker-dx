@@ -1,4 +1,7 @@
-pub(crate) fn get_item_or_default<T: serde::de::DeserializeOwned, U: Fn() -> T>(key: &str, default: U) -> T {
+pub(crate) fn get_item_or_default<T: serde::de::DeserializeOwned, U: Fn() -> T>(
+    key: &str,
+    default: U,
+) -> T {
     #[cfg(feature = "web")]
     {
         // TODO: 在隐私模式下 unwrap 可能会 panic

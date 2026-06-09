@@ -1,5 +1,5 @@
 //! Baker：《明日方舟：终末地》二创制作工具
-//! 
+//!
 //! > [!WARNING]
 //! > 这个分支用于重写整个项目，目前还处在早期开发中。
 
@@ -49,8 +49,10 @@ const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 const FONT: Asset = asset!("/assets/SourceHanSansSC-Regular.otf");
 const FONT_BENDER: Asset = asset!("/assets/bender.otf");
 
-const AVATAR_ENDMINF: Asset = asset!("/assets/extracted/avatar/operator/icon_round_chr_0003_endminf.png");
-const AVATAR_PERLICA: Asset = asset!("/assets/extracted/avatar/operator/icon_round_chr_0004_pelica.png");
+const AVATAR_ENDMINF: Asset =
+    asset!("/assets/extracted/avatar/operator/icon_round_chr_0003_endminf.png");
+const AVATAR_PERLICA: Asset =
+    asset!("/assets/extracted/avatar/operator/icon_round_chr_0004_pelica.png");
 
 const AVATAR_BACKGROUND: Asset = asset!("/assets/extracted/mask/mask_snscharentry_head.png");
 const AVATAR_FRAME: Asset = asset!("/assets/extracted/bg/bg_snscharentry_head_Line.png");
@@ -67,17 +69,25 @@ fn provide_baker_state() {
 
     let default_operators = || {
         let mut operators = fnv::FnvHashMap::default();
-        operators.insert(perlica_uuid, Operator { name: "Perlica".to_owned() });
+        operators.insert(
+            perlica_uuid,
+            Operator {
+                name: "Perlica".to_owned(),
+            },
+        );
         operators
     };
 
     let default_sessions = || {
         let mut sessions = fnv::FnvHashMap::default();
-        sessions.insert(session_uuid, Session {
-            session_name: "Perlica".to_owned(),
-            participants_ids: vec![perlica_uuid],
-            messages: vec![],
-        });
+        sessions.insert(
+            session_uuid,
+            Session {
+                session_name: "Perlica".to_owned(),
+                participants_ids: vec![perlica_uuid],
+                messages: vec![],
+            },
+        );
         sessions
     };
 
@@ -90,7 +100,12 @@ fn provide_baker_state() {
     let sessions = use_signal(|| sessions);
 
     let need_to_scroll_down = use_signal(|| false);
-    use_context_provider(|| BakerState { operators, sessions, current_session, need_to_scroll_down });
+    use_context_provider(|| BakerState {
+        operators,
+        sessions,
+        current_session,
+        need_to_scroll_down,
+    });
 }
 
 #[component]
@@ -204,7 +219,9 @@ fn SessionUI() -> Element {
 
     if current_session.read().is_some() {
         // TODO: 虽然 current_session.read().unwrap() 正常情况下是保证正确的 —— 但是谁知道呢？SessionMainContent 与 InputArea 同
-        let current_session_name = sessions.read()[&current_session.read().unwrap()].session_name.clone();
+        let current_session_name = sessions.read()[&current_session.read().unwrap()]
+            .session_name
+            .clone();
 
         rsx! {
             div { id: "session", class: "flex flex-column",
@@ -243,9 +260,12 @@ fn SessionMainContent() -> Element {
         }
 
         spawn(async {
-            let _ = document::eval("\n\
+            let _ = document::eval(
+                "\n\
             let element = document.querySelector('#session-main-content');\n\
-            element.scroll(0, element.scrollHeight);").await;
+            element.scroll(0, element.scrollHeight);",
+            )
+            .await;
         });
 
         *baker_state.need_to_scroll_down.write() = false;
@@ -293,17 +313,31 @@ fn InputArea() -> Element {
 
         let sender_uuid = if ctrl {
             // 如果 participants_ids 里没有干员了，那就让 Endministrator 顶替下先（None）
-            sessions.read().get(&current_session.read().unwrap()).unwrap().participants_ids.first().copied()
+            sessions
+                .read()
+                .get(&current_session.read().unwrap())
+                .unwrap()
+                .participants_ids
+                .first()
+                .copied()
         } else {
             None
         };
 
-        sessions.write().get_mut(&current_session.read().unwrap()).unwrap().messages.push(Message { sender: sender_uuid, content: value() });
+        sessions
+            .write()
+            .get_mut(&current_session.read().unwrap())
+            .unwrap()
+            .messages
+            .push(Message {
+                sender: sender_uuid,
+                content: value(),
+            });
         value.set(String::new());
 
         *baker_state.need_to_scroll_down.write() = true;
     };
-    
+
     let on_submit_click = move |evt: Event<MouseData>| {
         submit(evt.modifiers().ctrl());
     };
@@ -328,7 +362,6 @@ fn InputArea() -> Element {
 
 #[component]
 fn MessageRow(avatar_on_left: bool, messages: Vec<String>) -> Element {
-
     let avatar_left_class = if avatar_on_left {
         "message-row-avatar message-row-avatar-background"
     } else {

@@ -1,0 +1,12 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request: { types: [opened, synchronize, reopened, ready_for_review], branches: [main] }
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:  { uses: ealmloff/dioxus-ci/.github/workflows/check.yml@main }
+  test:   { uses: ealmloff/dioxus-ci/.github/workflows/test.yml@main }
+  clippy: { uses: ealmloff/dioxus-ci/.github/workflows/clippy.yml@main }
+  fmt:    { uses: ealmloff/dioxus-ci/.github/workflows/fmt.yml@main }
