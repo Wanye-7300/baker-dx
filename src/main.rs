@@ -35,6 +35,7 @@ struct BakerState {
     sessions: Signal<fnv::FnvHashMap<Uuid, Session>>,
     current_session: Signal<Option<Uuid>>,
     need_to_scroll_down: Signal<bool>,
+    dialogs: Signal<fnv::FnvHashMap<Uuid, Element>>,
 }
 
 #[derive(Debug, Clone, Routable, PartialEq)]
@@ -48,7 +49,12 @@ const FAVICON: Asset = asset!("/assets/favicon.ico");
 const NORMALIZE_CSS: Asset = asset!("/assets/styling/normalize.css");
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 
-const FONT: Asset = asset!("/assets/SourceHanSansSC-Regular.otf");
+const FONT_THIN: Asset = asset!("/assets/HarmonyOS_Sans_SC_Thin.ttf");
+const FONT_LIGHT: Asset = asset!("/assets/HarmonyOS_Sans_SC_Light.ttf");
+const FONT_REGULAR: Asset = asset!("/assets/HarmonyOS_Sans_SC_Regular.ttf");
+const FONT_MEDIUM: Asset = asset!("/assets/HarmonyOS_Sans_SC_Medium.ttf");
+const FONT_BOLD: Asset = asset!("/assets/HarmonyOS_Sans_SC_Bold.ttf");
+const FONT_BLACK: Asset = asset!("/assets/HarmonyOS_Sans_SC_Black.ttf");
 const FONT_BENDER: Asset = asset!("/assets/bender.otf");
 
 const AVATAR_ENDMINF: Asset =
@@ -77,6 +83,12 @@ fn provide_baker_state() {
                 name: "Perlica".to_owned(),
             },
         );
+        operators.insert(
+            Uuid::new_v4(),
+            Operator {
+                name: "Chen Qianyu".to_owned(),
+            },
+        );
         operators
     };
 
@@ -102,11 +114,14 @@ fn provide_baker_state() {
     let sessions = use_signal(|| sessions);
 
     let need_to_scroll_down = use_signal(|| false);
+    
+    let dialogs = use_signal(fnv::FnvHashMap::default);
     use_context_provider(|| BakerState {
         operators,
         sessions,
         current_session,
         need_to_scroll_down,
+        dialogs,
     });
 }
 
@@ -126,12 +141,52 @@ fn App() -> Element {
     let font_face = format!(
         r#"
         @font-face {{
-            font-family: 'Source Han Sans SC';
-            src: url('{}') format('opentype');
-            font-weight: normal;
+            font-family: 'HarmonyOS Sans';
+            src: url('{}') format('truetype');
+            font-weight: 100;
+            font-style: normal;
+        }}
+
+        @font-face {{
+            font-family: 'HarmonyOS Sans';
+            src: url('{}') format('truetype');
+            font-weight: 300;
+            font-style: normal;
+        }}
+
+        @font-face {{
+            font-family: 'HarmonyOS Sans';
+            src: url('{}') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+        }}
+
+        @font-face {{
+            font-family: 'HarmonyOS Sans';
+            src: url('{}') format('truetype');
+            font-weight: 500;
+            font-style: normal;
+        }}
+
+        @font-face {{
+            font-family: 'HarmonyOS Sans';
+            src: url('{}') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+        }}
+
+        @font-face {{
+            font-family: 'HarmonyOS Sans';
+            src: url('{}') format('truetype');
+            font-weight: 900;
             font-style: normal;
         }}"#,
-        FONT.bundled().bundled_path()
+        FONT_THIN.bundled().bundled_path(),
+        FONT_LIGHT.bundled().bundled_path(),
+        FONT_REGULAR.bundled().bundled_path(),
+        FONT_MEDIUM.bundled().bundled_path(),
+        FONT_BOLD.bundled().bundled_path(),
+        FONT_BLACK.bundled().bundled_path(),
     );
 
     let font_face_bender = format!(
