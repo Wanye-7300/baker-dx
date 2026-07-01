@@ -175,6 +175,7 @@ button {
 
 .message-bubble-wrapper {
     max-width: 65%;
+    position: relative;
 }
 
 .message-bubble-wrapper > span {
@@ -183,6 +184,35 @@ button {
     border-color: transparent;
     font-size: 1.1em;
     display: inline-block;
+}
+
+.actions {
+    position: absolute;
+    right: 100%;
+    bottom: 0;
+    white-space: nowrap;
+    visibility: hidden;
+    padding: 30px 10px 0 10px;
+}
+
+/* TODO: 当气泡在左边时 actions 位置不对 */
+.actions-left {
+    right: 0;
+}
+
+.message-bubble-wrapper:hover > .actions, .actions:hover {
+    visibility: visible;
+}
+
+.actions > span {
+    margin: 0 5px 0 5px;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.actions > span:hover {
+    text-decoration: underline;
+    color: oklch(80.9% 0.105 251.813);
 }
 
 .message-bubble-others {
@@ -202,7 +232,7 @@ button {
 
 .dialog {
     position: absolute;
-    background-color: rgb(220, 220, 220);
+    background-color: white;
     left: 10px;
     bottom: 10px;
     min-width: 300px;
@@ -212,7 +242,7 @@ button {
 .dialog-title {
     margin: -15px;
     padding: 15px;
-    background-color: yellow;
+    background-color: #fdfc00;
     color: black;
     font-size: 1.5rem;
     justify-content: space-between;

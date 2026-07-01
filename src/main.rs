@@ -3,6 +3,8 @@
 //! > [!WARNING]
 //! > 这个分支用于重写整个项目，目前还处在早期开发中。
 
+use std::collections;
+
 use crate::ui::Baker;
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -26,7 +28,9 @@ struct Message {
 struct Session {
     session_name: String,
     participants_ids: Vec<Uuid>,
-    messages: Vec<Message>,
+    messages: collections::BTreeMap<u64, Message>,
+    // 下次 push 消息时应该插入的编号，然后 +1
+    id: u64,
 }
 
 #[derive(Clone, Debug)]
@@ -99,7 +103,8 @@ fn provide_baker_state() {
             Session {
                 session_name: "Perlica".to_owned(),
                 participants_ids: vec![perlica_uuid],
-                messages: vec![],
+                messages: collections::BTreeMap::new(),
+                id: 0u64,
             },
         );
         sessions

@@ -8,12 +8,15 @@ mod session_cards;
 pub(super) fn Baker() -> Element {
     let baker_state = use_context::<crate::BakerState>();
     let dialogs = baker_state.dialogs.read();
+    
+    let session_name = use_signal(String::new);
+    let participants_ids = use_signal(fnv::FnvHashSet::default);
 
     rsx! {
         div { id: "app", class: "flex flex-column",
             div { id: "title", "// BAKER / Messages" }
             div { id: "main-content", class: "flex flex-row",
-                session_cards::SessionCards {}
+                session_cards::SessionCards { session_name, participants_ids }
                 session::SessionUI {}
             }
         }

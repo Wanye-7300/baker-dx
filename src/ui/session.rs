@@ -41,7 +41,7 @@ fn SessionMainContent() -> Element {
 
     let mut messages = vec![];
     let mut temporary = vec![]; // 用于判断一组消息是不是一个人发的，然后塞进 messages
-    let mut sender_uuid_now = iter.peek().and_then(|x| x.sender);
+    let mut sender_uuid_now = iter.peek().and_then(|x| x.1.sender);
 
     use_effect(move || {
         if !*baker_state.need_to_scroll_down.read() {
@@ -62,8 +62,8 @@ fn SessionMainContent() -> Element {
 
     loop {
         let peek = iter.peek();
-        if peek.is_some_and(|x| x.sender == sender_uuid_now) {
-            temporary.push(peek.unwrap().content.clone());
+        if peek.is_some_and(|x| x.1.sender == sender_uuid_now) {
+            temporary.push((*peek.unwrap().0, peek.unwrap().1.content.clone()));
         } else {
             if !temporary.is_empty() {
                 messages.push((sender_uuid_now.is_some(), temporary));
@@ -71,8 +71,8 @@ fn SessionMainContent() -> Element {
             if peek.is_none() {
                 break;
             }
-            temporary = vec![peek.unwrap().content.clone()];
-            sender_uuid_now = peek.and_then(|x| x.sender);
+            temporary = vec![(*peek.unwrap().0, peek.unwrap().1.content.clone())];
+            sender_uuid_now = peek.and_then(|x| x.1.sender);
         }
         iter.next();
     }
@@ -112,13 +112,19 @@ fn InputArea() -> Element {
         } else {
             None
         };
+        
+        let insert_id = sessions
+            .read().get(&current_session.read().unwrap()).unwrap().id;
+
+        sessions
+            .write().get_mut(&current_session.read().unwrap()).unwrap().id += 1;
 
         sessions
             .write()
             .get_mut(&current_session.read().unwrap())
             .unwrap()
             .messages
-            .push(crate::Message {
+            .insert(insert_id, crate::Message {
                 sender: sender_uuid,
                 content: value(),
             });
@@ -150,7 +156,7 @@ fn InputArea() -> Element {
 }
 
 #[component]
-fn MessageRow(avatar_on_left: bool, messages: Vec<String>) -> Element {
+fn MessageRow(avatar_on_left: bool, messages: Vec<(u64, String)>) -> Element {
     let avatar_left_class = if avatar_on_left {
         "message-row-avatar message-row-avatar-background"
     } else {
@@ -174,7 +180,7 @@ fn MessageRow(avatar_on_left: bool, messages: Vec<String>) -> Element {
             // 中间消息
             div { class: if avatar_on_left { "message-row-content message-row-content-left" } else { "message-row-content message-row-content-right" },
                 for message in messages {
-                    MessageBubble { avatar_on_left, message }
+                    MessageBubble { key: "{message.0}", avatar_on_left, message }
                 }
             }
             // 右侧头像
@@ -188,11 +194,41 @@ fn MessageRow(avatar_on_left: bool, messages: Vec<String>) -> Element {
 }
 
 #[component]
-fn MessageBubble(avatar_on_left: bool, message: String) -> Element {
+fn MessageBubble(avatar_on_left: bool, message: (u64, String)) -> Element {
+    let message_id = message.0;
+
+    let delete_messages = move |_| {
+        let mut baker_state = use_context::<crate::BakerState>();
+        baker_state.sessions.write().get_mut(&baker_state.current_session.read().unwrap()).unwrap().messages.remove(&message_id);
+    };
+
+    // TODO: 添加 修改 和 插入消息的功能
+    let message_actions_left = rsx! {
+        span { class: "actions actions-left",
+            span { onclick: delete_messages, "删除" }
+            span { "修改" }
+            span { "在此前插入消息" }
+        }
+    };
+
+    let message_actions_right = rsx! {
+        span { class: "actions",
+            span { onclick: delete_messages, "删除" }
+            span { "修改" }
+            span { "在此前插入消息" }
+        }
+    };
+
     rsx! {
         div { class: "message-bubble-wrapper",
+            if !avatar_on_left {
+                {message_actions_right}
+            }
             span { class: if avatar_on_left { "message-bubble-others" } else { "message-bubble-self" },
-                {message}
+                {message.1}
+            }
+            if avatar_on_left {
+                {message_actions_left}
             }
         }
     }

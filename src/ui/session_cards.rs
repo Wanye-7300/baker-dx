@@ -1,12 +1,11 @@
+use std::collections;
+
 use dioxus::prelude::*;
 use uuid::Uuid;
 
 #[component]
-pub(super) fn SessionCards() -> Element {
+pub(super) fn SessionCards(session_name: Signal<String>, participants_ids: Signal<fnv::FnvHashSet<Uuid>>) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
-
-    let session_name = use_signal(String::new);
-    let participants_ids = use_signal(fnv::FnvHashSet::default);
 
     rsx! {
         div { id: "session-cards", class: "flex flex-column",
@@ -24,6 +23,7 @@ pub(super) fn SessionCards() -> Element {
                             session_name,
                             participants_ids,
                             on_confirm: move |_| {
+                                let mut baker_state = use_context::<crate::BakerState>();
                                 baker_state
                                     .sessions
                                     .write()
@@ -36,10 +36,10 @@ pub(super) fn SessionCards() -> Element {
                                                 .iter()
                                                 .cloned()
                                                 .collect::<Vec<Uuid>>(),
-                                            messages: vec![],
+                                            messages: collections::BTreeMap::new(),
+                                            id: 0,
                                         },
                                     );
-                                let mut baker_state = use_context::<crate::BakerState>();
                                 baker_state.dialogs.write().remove(&uuid);
                             },
                             uuid,
