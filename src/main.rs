@@ -36,6 +36,18 @@ struct Session {
     id: u64,
 }
 
+impl Session {
+    fn make_no_animation(&mut self) {
+        for v in self.messages.values_mut().rev() {
+            if !v.animation {
+                // 一般来说，只有最后几个 messages 是 true，自然遍历到 false 那么后面基本不可能有了，有了我给你了
+                break;
+            }
+            v.animation = false;
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 struct BakerState {
     operators: Signal<fnv::FnvHashMap<Uuid, Operator>>,

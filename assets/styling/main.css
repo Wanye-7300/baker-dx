@@ -272,9 +272,10 @@ button {
   padding: 30px 10px 0 10px;
 }
 
-/* TODO: 当气泡在左边时 actions 位置不对 */
 .actions-left {
-  right: 0;
+  position: relative;
+  right: initial;
+  bottom: -10px;
 }
 
 .message-bubble-wrapper:hover > .actions,
@@ -298,6 +299,7 @@ button {
   border-image-slice: 20 20 18 30 fill;
   border-image-width: 20px 20px 18px 30px;
   padding: 12px 10px 12px 20px;
+  user-select: all;
 }
 
 .message-bubble-self {
@@ -306,6 +308,7 @@ button {
   border-image-width: 20px 30px 18px 20px;
   padding: 12px 20px 12px 10px;
   color: black;
+  user-select: text;
 }
 
 .message-bubble-animate-left {
