@@ -7,10 +7,9 @@ pub(super) fn SessionUI() -> Element {
     let current_session = baker_state.current_session;
 
     if current_session.read().is_some() {
-        // TODO: 虽然 current_session.read().unwrap() 正常情况下是保证正确的 —— 但是谁知道呢？SessionMainContent 与 InputArea 同
-        let current_session_name = sessions.read()[&current_session.read().unwrap()]
-            .session_name
-            .clone();
+        // TODO: 虽然 current_session.read().unwrap() 正常情况下是保证正确的 —— 但是谁知道呢？SessionMainContent 与
+        // InputArea 同
+        let current_session_name = sessions.read()[&current_session.read().unwrap()].session_name.clone();
 
         rsx! {
             div { id: "session", class: "flex flex-column",
@@ -63,7 +62,11 @@ fn SessionMainContent() -> Element {
     loop {
         let peek = iter.peek();
         if peek.is_some_and(|x| x.1.sender == sender_uuid_now) {
-            temporary.push((*peek.unwrap().0, peek.unwrap().1.content.clone(), peek.unwrap().1.animation));
+            temporary.push((
+                *peek.unwrap().0,
+                peek.unwrap().1.content.clone(),
+                peek.unwrap().1.animation,
+            ));
         } else {
             if !temporary.is_empty() {
                 messages.push((sender_uuid_now.is_some(), temporary));
@@ -71,7 +74,11 @@ fn SessionMainContent() -> Element {
             if peek.is_none() {
                 break;
             }
-            temporary = vec![(*peek.unwrap().0, peek.unwrap().1.content.clone(), peek.unwrap().1.animation)];
+            temporary = vec![(
+                *peek.unwrap().0,
+                peek.unwrap().1.content.clone(),
+                peek.unwrap().1.animation,
+            )];
             sender_uuid_now = peek.and_then(|x| x.1.sender);
         }
         iter.next();
@@ -112,23 +119,24 @@ fn InputArea() -> Element {
         } else {
             None
         };
-        
-        let insert_id = sessions
-            .read().get(&current_session.read().unwrap()).unwrap().id;
 
-        sessions
-            .write().get_mut(&current_session.read().unwrap()).unwrap().id += 1;
+        let insert_id = sessions.read().get(&current_session.read().unwrap()).unwrap().id;
+
+        sessions.write().get_mut(&current_session.read().unwrap()).unwrap().id += 1;
 
         sessions
             .write()
             .get_mut(&current_session.read().unwrap())
             .unwrap()
             .messages
-            .insert(insert_id, crate::Message {
-                sender: sender_uuid,
-                content: value(),
-                animation: true,
-            });
+            .insert(
+                insert_id,
+                crate::Message {
+                    sender: sender_uuid,
+                    content: value(),
+                    animation: true,
+                },
+            );
         value.set(String::new());
 
         *baker_state.need_to_scroll_down.write() = true;
@@ -204,7 +212,13 @@ fn MessageBubble(avatar_on_left: bool, message: (u64, String, bool)) -> Element 
 
     let delete_messages = move |_| {
         let mut baker_state = use_context::<crate::BakerState>();
-        baker_state.sessions.write().get_mut(&baker_state.current_session.read().unwrap()).unwrap().messages.remove(&message_id);
+        baker_state
+            .sessions
+            .write()
+            .get_mut(&baker_state.current_session.read().unwrap())
+            .unwrap()
+            .messages
+            .remove(&message_id);
     };
 
     // TODO: 添加 修改 和 插入消息的功能

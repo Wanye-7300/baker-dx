@@ -64,10 +64,8 @@ const FONT_BOLD: Asset = asset!("/assets/HarmonyOS_Sans_SC_Bold.ttf");
 const FONT_BLACK: Asset = asset!("/assets/HarmonyOS_Sans_SC_Black.ttf");
 const FONT_BENDER: Asset = asset!("/assets/bender.otf");
 
-const AVATAR_ENDMINF: Asset =
-    asset!("/assets/extracted/avatar/operator/icon_round_chr_0003_endminf.png");
-const AVATAR_PERLICA: Asset =
-    asset!("/assets/extracted/avatar/operator/icon_round_chr_0004_pelica.png");
+const AVATAR_ENDMINF: Asset = asset!("/assets/extracted/avatar/operator/icon_round_chr_0003_endminf.png");
+const AVATAR_PERLICA: Asset = asset!("/assets/extracted/avatar/operator/icon_round_chr_0004_pelica.png");
 
 const AVATAR_BACKGROUND: Asset = asset!("/assets/extracted/mask/mask_snscharentry_head.png");
 const AVATAR_FRAME: Asset = asset!("/assets/extracted/bg/bg_snscharentry_head_Line.png");
@@ -127,7 +125,7 @@ fn provide_baker_state() {
     let sessions = use_signal(|| sessions);
 
     let need_to_scroll_down = use_signal(|| false);
-    
+
     let dialogs = use_signal(fnv::FnvHashMap::default);
     use_context_provider(|| BakerState {
         operators,

@@ -9,7 +9,7 @@ mod session_cards;
 pub(super) fn Baker() -> Element {
     let baker_state = use_context::<crate::BakerState>();
     let dialogs = baker_state.dialogs.read();
-    
+
     let session_name = use_signal(String::new);
     let participants_ids = use_signal(fnv::FnvHashSet::default);
 
@@ -31,7 +31,7 @@ pub(super) fn Baker() -> Element {
 #[component]
 pub(crate) fn Dialog(title: String, on_confirm: EventHandler, uuid: Uuid, children: Element) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
-    
+
     rsx! {
         div {
             class: "backdrop",
@@ -68,7 +68,12 @@ pub(crate) fn Dialog(title: String, on_confirm: EventHandler, uuid: Uuid, childr
 }
 
 #[component]
-pub(crate) fn DialogNewSession(session_name: Signal<String>, participants_ids: Signal<fnv::FnvHashSet<Uuid>>, on_confirm: EventHandler, uuid: Uuid) -> Element {
+pub(crate) fn DialogNewSession(
+    session_name: Signal<String>,
+    participants_ids: Signal<fnv::FnvHashSet<Uuid>>,
+    on_confirm: EventHandler,
+    uuid: Uuid,
+) -> Element {
     let baker_state = use_context::<crate::BakerState>();
     let operators = (*baker_state.operators.read()).clone();
 
