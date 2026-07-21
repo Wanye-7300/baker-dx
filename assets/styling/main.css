@@ -1,296 +1,338 @@
 *,
 *::before,
 *::after {
-    box-sizing: border-box;
-    font-family: 'HarmonyOS Sans';
-    color: white;
-    list-style: none;
-    text-autospace: normal;
-    overflow-wrap: anywhere;
+  box-sizing: border-box;
+  font-family: "HarmonyOS Sans";
+  color: white;
+  list-style: none;
+  text-autospace: normal;
+  overflow-wrap: anywhere;
+  user-select: none;
 }
 
-html, body {
-    height: 100%;
+html,
+body {
+  height: 100%;
 }
 
-input, button {
-    color: black;
+input,
+button {
+  outline: none;
+  color: black;
+}
+
+input[type="text"] {
+  border-style: solid;
+}
+
+input:focus {
+  outline: none;
 }
 
 button {
-    cursor: pointer;
+  border-style: none;
+  cursor: pointer;
 }
 
 :root {
-    background-color: #2c2c2c;
+  background-color: #2c2c2c;
 }
 
 .flex {
-    display: flex;
+  display: flex;
 }
 
 .flex-column {
-    flex-direction: column;
+  flex-direction: column;
 }
 
 .flex-row {
-    flex-direction: row;
+  flex-direction: row;
 }
 
 #app {
-    height: 100vh;
-    padding: 20px;
-    gap: 20px;
+  height: 100vh;
+  padding: 20px;
+  gap: 20px;
 }
 
 #main-content {
-    flex: 1;
-    gap: 20px;
-    height: 100%;
-    min-height: 0;
+  flex: 1;
+  gap: 20px;
+  height: 100%;
+  min-height: 0;
 }
 
 #cards-wrapper {
-    flex: 1;
+  flex: 1;
+  overflow-y: scroll;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to bottom, black 95%, transparent 100%);
+}
+
+#cards-wrapper::-webkit-scrollbar {
+  display: none;
 }
 
 #session-cards {
-    width: 320px;
+  height: calc(100% + 5px);
+  width: 320px;
+  gap: 5px;
 }
 
 #cards-new {
-    height: 32px;
-    border-radius: 16px;
+  height: 32px;
+  border-radius: 16px;
 }
 
 .card {
-    margin-bottom: 10px;
-    background-color: #3c3c3c;
-    /* TODO: 渐变边框。上：#404040，下：#787878 */
-    border: #737373 solid 2px;
-    border-radius: 5px;
-    width: 100%;
-    height: 80px;
-    cursor: pointer;
+  margin-bottom: 10px;
+  background-color: #3c3c3c;
+  /* TODO: 渐变边框。上：#404040，下：#787878 */
+  border: #737373 solid 2px;
+  border-radius: 5px;
+  width: 100%;
+  height: 80px;
+  cursor: pointer;
 }
 
 .card:last-child {
-    margin-bottom: 0;
+  margin-bottom: 0;
 }
 
 .card:hover {
-    background-color: #4c4c4c;
+  background-color: #4c4c4c;
 }
 
 #session {
-    flex: 1;
-    gap: 10px;
-    min-width: 0;
-    height: 100%;
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
+  height: 100%;
 }
 
 #session-not-chosen {
-    flex: 1;
-    align-items: center;
-    justify-content: center;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
 }
 
 #session-header {
-    flex: 0 0 65px;
-    height: 65px;
-    border: #838383 solid 2px;
-    border-radius: 15px 15px 0 0;
-    background-color: #3c3c3c;
-    justify-content: center;
+  flex: 0 0 65px;
+  height: 65px;
+  border: #838383 solid 2px;
+  border-radius: 15px 15px 0 0;
+  background: #3c3c3c var(--session-title-left-bar) repeat-y scroll left
+    center / 25px;
+  justify-content: center;
 }
 
 #session-header span {
-    margin-left: 20px;
-    font-size: 1.2em;
+  margin-left: 20px;
+  font-size: 1.2em;
 }
 
 #session-main {
-    border: white solid 2px;
-    border-radius: 0 0 15px 15px;
-    flex: 1;
-    min-height: 0;
+  border: white solid 2px;
+  border-radius: 0 0 15px 15px;
+  flex: 1;
+  min-height: 0;
 }
 
 #session-main-content {
-    flex: 1;
-    overflow-y: auto;
+  flex: 1;
+  overflow-y: auto;
 }
 
 #input-area {
-    flex: 0 80px;
-    background-color: #3c3c3c;
-    border-radius: 0 0 15px 15px;
-    padding: 20px;
-    gap: 10px;
+  flex: 0 80px;
+  background-color: #3c3c3c;
+  border-radius: 0 0 15px 15px;
+  padding: 20px;
+  gap: 10px;
 }
 
 #input-area-input {
-    flex: 1;
-    border-radius: 30px;
-    padding-left: 15px;
-    padding-right: 15px;
+  flex: 1;
+  border-radius: 30px;
+  padding-left: 15px;
+  padding-right: 15px;
 }
 
 .message-row-avatar {
-    --avatar-size: 100px;
-    --frame-size-percentage: 75%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex: 0 0 var(--avatar-size);
+  --avatar-size: 100px;
+  --frame-size-percentage: 75%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 0 0 var(--avatar-size);
 }
 
 .message-row-avatar-background {
-    width: var(--avatar-size);
-    height: var(--avatar-size);
-    background: var(--avatar-background) center / var(--avatar-size),
-        var(--avatar-frame) center / var(--frame-size-percentage) no-repeat;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  background:
+    var(--avatar-background) center / var(--avatar-size),
+    var(--avatar-frame) center / var(--frame-size-percentage) no-repeat;
 }
 
 .message-row-avatar img {
-    --avatar-size: calc(var(--frame-size-percentage) * 1.12);
-    width: var(--avatar-size);
-    height: var(--avatar-size);
-    clip-path: xywh(16% 0 75% 90% round 0 0 100% 100%);
-    position: relative;
-    bottom: 2px;
+  --avatar-size: calc(var(--frame-size-percentage) * 1.15);
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  clip-path: xywh(16% 15% 70% 70% round 100% 100% 100% 100%);
+  position: relative;
+  top: 4px;
 }
 
 .message-row-content {
-    margin-top: 20px;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  margin-top: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .message-row-content-right {
-    align-items: end;
+  align-items: end;
 }
 
 .message-bubble-wrapper {
-    max-width: 65%;
-    position: relative;
+  max-width: 65%;
+  position: relative;
 }
 
 .message-bubble-wrapper > span {
-    border-image-repeat: repeat;
-    border-style: solid;
-    border-color: transparent;
-    font-size: 1.1em;
-    display: inline-block;
+  border-image-repeat: repeat;
+  border-style: solid;
+  border-color: transparent;
+  font-size: 1.1em;
+  display: inline-block;
 }
 
 .actions {
-    position: absolute;
-    right: 100%;
-    bottom: 0;
-    white-space: nowrap;
-    visibility: hidden;
-    padding: 30px 10px 0 10px;
+  position: absolute;
+  right: 100%;
+  bottom: 0;
+  white-space: nowrap;
+  visibility: hidden;
+  padding: 30px 10px 0 10px;
 }
 
 /* TODO: 当气泡在左边时 actions 位置不对 */
 .actions-left {
-    right: 0;
+  right: 0;
 }
 
-.message-bubble-wrapper:hover > .actions, .actions:hover {
-    visibility: visible;
+.message-bubble-wrapper:hover > .actions,
+.actions:hover {
+  visibility: visible;
 }
 
 .actions > span {
-    margin: 0 5px 0 5px;
-    font-size: 0.95rem;
-    cursor: pointer;
+  margin: 0 5px 0 5px;
+  font-size: 0.95rem;
+  cursor: pointer;
 }
 
 .actions > span:hover {
-    text-decoration: underline;
-    color: oklch(80.9% 0.105 251.813);
+  text-decoration: underline;
+  color: oklch(80.9% 0.105 251.813);
 }
 
 .message-bubble-others {
-    border-image-source: var(--message-bubble-others);
-    border-image-slice: 20 20 18 30 fill;
-    border-image-width: 20px 20px 18px 30px;
-    padding: 12px 10px 12px 20px;
+  border-image-source: var(--message-bubble-others);
+  border-image-slice: 20 20 18 30 fill;
+  border-image-width: 20px 20px 18px 30px;
+  padding: 12px 10px 12px 20px;
 }
 
 .message-bubble-self {
-    border-image-source: var(--message-bubble-self);
-    border-image-slice: 20 30 18 20 fill;
-    border-image-width: 20px 30px 18px 20px;
-    padding: 12px 20px 12px 10px;
-    color: black;
+  border-image-source: var(--message-bubble-self);
+  border-image-slice: 20 30 18 20 fill;
+  border-image-width: 20px 30px 18px 20px;
+  padding: 12px 20px 12px 10px;
+  color: black;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 325;
 }
 
 .dialog {
-    position: absolute;
-    background-color: white;
-    left: 10px;
-    bottom: 10px;
-    min-width: 300px;
-    padding: 15px;
+  position: absolute;
+  background-color: white;
+  left: 10px;
+  bottom: 10px;
+  min-width: 600px;
+  padding: 15px;
+  border-radius: 3px;
 }
 
 .dialog-title {
-    margin: -15px;
-    padding: 15px;
-    background-color: #fdfc00;
-    color: black;
-    font-size: 1.5rem;
-    justify-content: space-between;
+  margin: -15px;
+  padding: 12px;
+  padding-left: 15px;
+  background-color: #fdfc00;
+  color: black;
+  font-size: 1rem;
+  font-weight: 500;
+  justify-content: space-between;
 }
 
 .dialog-title-close {
-    background-color: #00000000;
-    border: 0px;
+  background-color: #00000000;
+  border: 0px;
 }
 
 .dialog-title-close:hover {
-    background-color: #FFFFFF7C;
+  background-color: #00000020;
 }
 
 .dialog-content {
-    min-height: 200px;
-    margin: 20px 0 20px 0;
+  min-height: 200px;
+  margin: 20px 0 20px 0;
 }
 
 .dialog-buttons {
-    justify-content: end;
+  justify-content: end;
 }
 
 .dialog-buttons-confirm {
-    height: 35px;
-    width: 100px;
-    border: 0;
-    border-radius: 5px;
-    background-color: oklch(82.8% 0.111 230.318);
+  height: 35px;
+  width: 100px;
+  border: 0;
+  border-radius: 5px;
+  background-color: #fdfc00;
 }
 
 .dialog-buttons-confirm:hover {
-    background-color: oklch(88.2% 0.059 254.128);
+  background-color: #fdfc0090;
 }
 
 .form-input {
-    display: block;
-    font-size: 1.1em;
-    width: 100%;
-    height: 40px;
+  display: block;
+  font-size: 0.95em;
+  width: 100%;
+  height: 40px;
 }
 
 #new-sessions-dialog {
-    gap: 10px;
+  gap: 5px;
+}
+
+.participant {
+  padding: 12px 5px;
+}
+
+.participant:hover {
+  background-color: #00000020;
 }
 
 .participant > label {
-    margin-left: 20px;
-    font-size: 1.2em;
-    color: black;
+  margin-left: 20px;
+  font-size: 0.95em;
+  color: black;
 }

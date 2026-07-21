@@ -71,6 +71,7 @@ const AVATAR_FRAME: Asset = asset!("/assets/extracted/bg/bg_snscharentry_head_Li
 
 const MESSAGE_BUBBLE_SELF: Asset = asset!("/assets/deco/bg_snscontenttextorpic_chat_04.png");
 const MESSAGE_BUBBLE_OTHERS: Asset = asset!("/assets/deco/bg_snscontenttextorpic_chat.png");
+const SESSION_TITLE_LEFT_BAR: Asset = asset!("/assets/deco/session_title_left_bar.png");
 
 fn main() {
     dioxus::launch(App);
@@ -213,6 +214,8 @@ fn App() -> Element {
     let message_bubble_self_bundled_path = message_bubble_self_bundled_path.bundled_path();
     let message_bubble_others_bundled_path = MESSAGE_BUBBLE_OTHERS.bundled();
     let message_bubble_others_bundled_path = message_bubble_others_bundled_path.bundled_path();
+    let session_title_left_bar_bundled_path = SESSION_TITLE_LEFT_BAR.bundled();
+    let session_title_left_bar_bundled_path = session_title_left_bar_bundled_path.bundled_path();
 
     rsx! {
         document::Link { rel: "icon", href: FAVICON, r#type: "image/x-icon" }
@@ -220,7 +223,7 @@ fn App() -> Element {
         document::Style { {font_face} }
         document::Style { {font_face_bender} }
         document::Style {
-            ":root {{ --avatar-background: url(\"{avatar_background_bundled_path}\"); --avatar-frame: url(\"{avatar_frame_bundled_path}\"); --message-bubble-self: url(\"{message_bubble_self_bundled_path}\"); --message-bubble-others: url(\"{message_bubble_others_bundled_path}\"); }}"
+            ":root {{ --avatar-background: url(\"{avatar_background_bundled_path}\"); --avatar-frame: url(\"{avatar_frame_bundled_path}\"); --message-bubble-self: url(\"{message_bubble_self_bundled_path}\"); --message-bubble-others: url(\"{message_bubble_others_bundled_path}\"); --session-title-left-bar: url(\"{session_title_left_bar_bundled_path}\") }}"
         }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
 

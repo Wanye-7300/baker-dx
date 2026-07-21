@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 use uuid::Uuid;
 
+mod assets;
 mod session;
 mod session_cards;
 
@@ -32,23 +33,34 @@ pub(crate) fn Dialog(title: String, on_confirm: EventHandler, uuid: Uuid, childr
     let mut baker_state = use_context::<crate::BakerState>();
     
     rsx! {
-        div { key: "{uuid.to_string()}", class: "dialog flex flex-column",
-            div { class: "dialog-title flex flex-row",
-                {title}
-                button {
-                    class: "dialog-title-close",
-                    onclick: move |_| {
-                        baker_state.dialogs.write().remove(&uuid);
-                    },
-                    "×"
+        div {
+            class: "backdrop",
+            onclick: move |_| {
+                baker_state.dialogs.write().remove(&uuid);
+            },
+            div {
+                key: "{uuid.to_string()}",
+                class: "dialog flex flex-column",
+                onclick: move |e| {
+                    e.stop_propagation();
+                },
+                div { class: "dialog-title flex flex-row",
+                    {title}
+                    button {
+                        class: "dialog-title-close",
+                        onclick: move |_| {
+                            baker_state.dialogs.write().remove(&uuid);
+                        },
+                        "×"
+                    }
                 }
-            }
-            div { class: "dialog-content", {children} }
-            div { class: "dialog-buttons flex flex-row",
-                button {
-                    class: "dialog-buttons-confirm",
-                    onclick: move |_| on_confirm.call(()),
-                    "好"
+                div { class: "dialog-content", {children} }
+                div { class: "dialog-buttons flex flex-row",
+                    button {
+                        class: "dialog-buttons-confirm",
+                        onclick: move |_| on_confirm.call(()),
+                        "好"
+                    }
                 }
             }
         }
@@ -73,13 +85,22 @@ pub(crate) fn DialogNewSession(session_name: Signal<String>, participants_ids: S
                 }
 
                 for (k , v) in operators {
-                    div { class: "participant",
+                    div {
+                        class: "participant",
+                        onclick: move |_| {
+                            if participants_ids.read().get(&k).is_none() {
+                                participants_ids.write().insert(k);
+                            } else {
+                                participants_ids.write().remove(&k);
+                            }
+                        },
                         input {
                             r#type: "checkbox",
                             id: k.to_string(),
                             name: k.to_string(),
-                            onchange: move |evt: Event<FormData>| {
-                                if &evt.value() == "true" {
+                            checked: participants_ids.read().get(&k).is_some(),
+                            onchange: move |_| {
+                                if participants_ids.read().get(&k).is_none() {
                                     participants_ids.write().insert(k);
                                 } else {
                                     participants_ids.write().remove(&k);
