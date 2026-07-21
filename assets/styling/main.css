@@ -255,6 +255,38 @@ button {
   color: black;
 }
 
+.message-bubble-animate-left {
+  animation: bubble-slide-in-left 0.1s cubic-bezier(1, 0, 1, 0.8);
+  transform-origin: left center;
+}
+
+.message-bubble-animate-right {
+  animation: bubble-slide-in-right 0.1s cubic-bezier(1, 0, 1, 0.8);
+  transform-origin: right center;
+}
+
+@keyframes bubble-slide-in-left {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bubble-slide-in-right {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
 .backdrop {
   position: fixed;
   inset: 0;

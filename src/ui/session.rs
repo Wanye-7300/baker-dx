@@ -63,7 +63,7 @@ fn SessionMainContent() -> Element {
     loop {
         let peek = iter.peek();
         if peek.is_some_and(|x| x.1.sender == sender_uuid_now) {
-            temporary.push((*peek.unwrap().0, peek.unwrap().1.content.clone()));
+            temporary.push((*peek.unwrap().0, peek.unwrap().1.content.clone(), peek.unwrap().1.animation));
         } else {
             if !temporary.is_empty() {
                 messages.push((sender_uuid_now.is_some(), temporary));
@@ -71,7 +71,7 @@ fn SessionMainContent() -> Element {
             if peek.is_none() {
                 break;
             }
-            temporary = vec![(*peek.unwrap().0, peek.unwrap().1.content.clone())];
+            temporary = vec![(*peek.unwrap().0, peek.unwrap().1.content.clone(), peek.unwrap().1.animation)];
             sender_uuid_now = peek.and_then(|x| x.1.sender);
         }
         iter.next();
@@ -127,6 +127,7 @@ fn InputArea() -> Element {
             .insert(insert_id, crate::Message {
                 sender: sender_uuid,
                 content: value(),
+                animation: true,
             });
         value.set(String::new());
 
@@ -156,7 +157,7 @@ fn InputArea() -> Element {
 }
 
 #[component]
-fn MessageRow(avatar_on_left: bool, messages: Vec<(u64, String)>) -> Element {
+fn MessageRow(avatar_on_left: bool, messages: Vec<(u64, String, bool)>) -> Element {
     let avatar_left_class = if avatar_on_left {
         "message-row-avatar message-row-avatar-background"
     } else {
@@ -194,7 +195,7 @@ fn MessageRow(avatar_on_left: bool, messages: Vec<(u64, String)>) -> Element {
 }
 
 #[component]
-fn MessageBubble(avatar_on_left: bool, message: (u64, String)) -> Element {
+fn MessageBubble(avatar_on_left: bool, message: (u64, String, bool)) -> Element {
     let message_id = message.0;
 
     let delete_messages = move |_| {
@@ -219,14 +220,26 @@ fn MessageBubble(avatar_on_left: bool, message: (u64, String)) -> Element {
         }
     };
 
+    let bubble_class = if avatar_on_left {
+        if message.2 {
+            "message-bubble-others message-bubble-animate-left"
+        } else {
+            "message-bubble-others"
+        }
+    } else {
+        if message.2 {
+            "message-bubble-self message-bubble-animate-right"
+        } else {
+            "message-bubble-self"
+        }
+    };
+
     rsx! {
         div { class: "message-bubble-wrapper",
             if !avatar_on_left {
                 {message_actions_right}
             }
-            span { class: if avatar_on_left { "message-bubble-others" } else { "message-bubble-self" },
-                {message.1}
-            }
+            span { class: bubble_class, {message.1} }
             if avatar_on_left {
                 {message_actions_left}
             }

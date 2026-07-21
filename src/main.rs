@@ -22,6 +22,9 @@ struct Operator {
 struct Message {
     sender: Option<Uuid>,
     content: String,
+    #[serde(skip_serializing)]
+    #[serde(default)]
+    animation: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
