@@ -147,15 +147,15 @@ button {
   overflow-y: auto;
 }
 
-#session-main-content:nth-child(1) {
+#session-main-content {
   mask-image: linear-gradient(
     to bottom,
     transparent 2%,
-    black 10%,
-    black 90%,
-    transparent 97%
+    black 6%,
+    black 94%,
+    transparent 98%
   );
-  padding-bottom: 50px;
+  padding: 30px 0 40px 0;
 }
 
 #input-area {
@@ -273,9 +273,9 @@ button {
 }
 
 .actions-left {
-  position: relative;
+  position: absolute;
   right: initial;
-  bottom: -10px;
+  bottom: 0;
 }
 
 .message-bubble-wrapper:hover > .actions,
@@ -346,7 +346,6 @@ button {
 .backdrop {
   position: fixed;
   inset: 0;
-  z-index: 325;
 }
 
 .dialog {
@@ -419,8 +418,39 @@ button {
   background-color: #00000020;
 }
 
-.participant > label {
+.participant > label,
+.participant > span {
   margin-left: 20px;
   font-size: 0.95em;
   color: black;
+}
+
+#new-operator-dialog {
+}
+
+.participants {
+  overflow-y: auto;
+  max-height: 300px;
+  max-width: 600px;
+}
+
+.participant-setting {
+  justify-content: space-between;
+}
+
+.actions-participant-setting {
+  position: static;
+  white-space: nowrap;
+}
+
+.actions-participant-setting > span {
+  margin: 0 5px 0 5px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  color: black;
+}
+
+.actions-participant-setting > span:hover {
+  text-decoration: underline;
+  color: oklch(69.346% 0.1654 252.626);
 }
