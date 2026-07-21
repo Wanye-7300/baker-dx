@@ -75,6 +75,10 @@ const AVATAR_FRAME: Asset = asset!("/assets/extracted/bg/bg_snscharentry_head_Li
 const MESSAGE_BUBBLE_SELF: Asset = asset!("/assets/deco/bg_snscontenttextorpic_chat_04.png");
 const MESSAGE_BUBBLE_OTHERS: Asset = asset!("/assets/deco/bg_snscontenttextorpic_chat.png");
 const SESSION_TITLE_LEFT_BAR: Asset = asset!("/assets/deco/session_title_left_bar.png");
+const SESSION_TITLE_RIGHT_BAR: Asset = asset!("/assets/deco/session_title_right_bar.png");
+const ICON_SNS_MESSAGE_02: Asset = asset!("/assets/extracted/icon/icon_sns_message_02.png");
+const ICON_SNS_CHAT_EMOTICON: Asset = asset!("/assets/deco/icon_sns_chat_emoticon.png");
+const INPUT_AREA_MORE: Asset = asset!("/assets/deco/input_area_more.png");
 
 fn main() {
     dioxus::launch(App);
@@ -219,6 +223,14 @@ fn App() -> Element {
     let message_bubble_others_bundled_path = message_bubble_others_bundled_path.bundled_path();
     let session_title_left_bar_bundled_path = SESSION_TITLE_LEFT_BAR.bundled();
     let session_title_left_bar_bundled_path = session_title_left_bar_bundled_path.bundled_path();
+    let session_title_right_bar_bundled_path = SESSION_TITLE_RIGHT_BAR.bundled();
+    let session_title_right_bar_bundled_path = session_title_right_bar_bundled_path.bundled_path();
+    let icon_sns_chat_emoticon_bundled_path = ICON_SNS_CHAT_EMOTICON.bundled();
+    let icon_sns_chat_emoticon_bundled_path = icon_sns_chat_emoticon_bundled_path.bundled_path();
+    let icon_sns_message_02_bundled_path = ICON_SNS_MESSAGE_02.bundled();
+    let icon_sns_message_02_bundled_path = icon_sns_message_02_bundled_path.bundled_path();
+    let input_area_more_bundled_path = INPUT_AREA_MORE.bundled();
+    let input_area_more_bundled_path = input_area_more_bundled_path.bundled_path();
 
     rsx! {
         document::Link { rel: "icon", href: FAVICON, r#type: "image/x-icon" }
@@ -226,7 +238,7 @@ fn App() -> Element {
         document::Style { {font_face} }
         document::Style { {font_face_bender} }
         document::Style {
-            ":root {{ --avatar-background: url(\"{avatar_background_bundled_path}\"); --avatar-frame: url(\"{avatar_frame_bundled_path}\"); --message-bubble-self: url(\"{message_bubble_self_bundled_path}\"); --message-bubble-others: url(\"{message_bubble_others_bundled_path}\"); --session-title-left-bar: url(\"{session_title_left_bar_bundled_path}\") }}"
+            ":root {{ --avatar-background: url(\"{avatar_background_bundled_path}\"); --avatar-frame: url(\"{avatar_frame_bundled_path}\"); --message-bubble-self: url(\"{message_bubble_self_bundled_path}\"); --message-bubble-others: url(\"{message_bubble_others_bundled_path}\"); --session-title-left-bar: url(\"{session_title_left_bar_bundled_path}\"); --session-title-right-bar: url(\"{session_title_right_bar_bundled_path}\"); --icon-sns-chat-emoticon: url(\"{icon_sns_chat_emoticon_bundled_path}\"); --icon-sns-message-02: url(\"{icon_sns_message_02_bundled_path}\"); --input-area-more: url(\"{input_area_more_bundled_path}\"); }}"
         }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
 

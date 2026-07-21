@@ -140,18 +140,22 @@ fn InputArea() -> Element {
 
     rsx! {
         div { id: "input-area", class: "flex flex-row",
-            input {
-                id: "input-area-input",
-                oninput: move |evt| { value.set(evt.value()) },
-                onkeypress: move |evt: Event<KeyboardData>| {
-                    if evt.code() == Code::Enter {
-                        submit(evt.modifiers().ctrl());
-                    }
-                },
-                r#type: "text",
-                value,
+            div { id: "input-area-input",
+                input {
+                    id: "input-area-input-input",
+                    oninput: move |evt| { value.set(evt.value()) },
+                    onkeypress: move |evt: Event<KeyboardData>| {
+                        if evt.code() == Code::Enter {
+                            submit(evt.modifiers().ctrl());
+                        }
+                    },
+                    r#type: "text",
+                    value,
+                }
             }
-            button { onclick: on_submit_click, "Submit" }
+            button { id: "input-area-submit", onclick: on_submit_click }
+            button { id: "input-area-stickers" }
+            button { id: "input-area-more" }
         }
     }
 }

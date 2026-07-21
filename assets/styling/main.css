@@ -23,6 +23,7 @@ button {
 
 input[type="text"] {
   border-style: solid;
+  border-width: 0;
 }
 
 input:focus {
@@ -122,13 +123,15 @@ button {
   height: 65px;
   border: #838383 solid 2px;
   border-radius: 15px 15px 0 0;
-  background: #3c3c3c var(--session-title-left-bar) repeat-y scroll left
-    center / 25px;
+  background:
+    var(--session-title-left-bar) repeat-y scroll left center / 25px,
+    #3c3c3c var(--session-title-right-bar) no-repeat scroll right center / auto
+      100%;
   justify-content: center;
 }
 
 #session-header span {
-  margin-left: 20px;
+  margin-left: 40px;
   font-size: 1.2em;
 }
 
@@ -144,12 +147,27 @@ button {
   overflow-y: auto;
 }
 
+#session-main-content:nth-child(1) {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 2%,
+    black 10%,
+    black 90%,
+    transparent 97%
+  );
+  padding-bottom: 50px;
+}
+
 #input-area {
-  flex: 0 80px;
+  --gap: 15px;
+  --area-height: 80px;
+  --area-padding: 18px;
+  --button-width: calc(var(--area-height) - var(--area-padding) * 2);
+  flex: 0 var(--area-height);
   background-color: #3c3c3c;
   border-radius: 0 0 15px 15px;
-  padding: 20px;
-  gap: 10px;
+  padding: var(--area-padding);
+  gap: var(--gap);
 }
 
 #input-area-input {
@@ -157,6 +175,41 @@ button {
   border-radius: 30px;
   padding-left: 15px;
   padding-right: 15px;
+  background-color: #eeecec;
+}
+
+#input-area-input-input {
+  position: relative;
+  width: calc(100% - var(--button-width));
+  height: 100%;
+  border-radius: 30px;
+  padding-left: 15px;
+  padding-right: 15px;
+  background-color: #eeecec;
+}
+
+#input-area-submit {
+  width: var(--button-width);
+  height: var(--button-width);
+  border-radius: 100%;
+  background: #eeecec00 var(--icon-sns-message-02) no-repeat center 10px / 80%;
+  position: absolute;
+  right: calc(
+    var(--area-padding) + var(--button-width) * 3 + var(--gap) * 2 - 12px
+  );
+}
+
+#input-area-stickers {
+  width: var(--button-width);
+  border-radius: 100%;
+  background: #eeecec var(--icon-sns-chat-emoticon) no-repeat center center /
+    60%;
+}
+
+#input-area-more {
+  width: var(--button-width);
+  border-radius: 100%;
+  background: #eeecec var(--input-area-more) no-repeat center center / 60%;
 }
 
 .message-row-avatar {
