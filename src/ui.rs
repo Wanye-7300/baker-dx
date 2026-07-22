@@ -131,6 +131,18 @@ pub(crate) fn DialogNewSession(
                         Uuid::new_v4(),
                         crate::Session {
                             session_name: session_name(),
+                            avatar: match participants_ids.read().iter().count() {
+                                0 => unimplemented!(),
+                                1 => {
+                                    baker_state
+                                        .operators
+                                        .get(participants_ids.read().iter().next().unwrap())
+                                        .unwrap()
+                                        .avatar
+                                        .clone()
+                                }
+                                _ => String::new(),
+                            },
                             participants_ids: participants_ids
                                 .read()
                                 .iter()

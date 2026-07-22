@@ -32,6 +32,7 @@ struct Message {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Session {
     session_name: String,
+    avatar: String,
     participants_ids: Vec<Uuid>,
     messages: collections::BTreeMap<u64, Message>,
     // 下次 push 消息时应该插入的编号，然后 +1
@@ -120,6 +121,7 @@ fn provide_baker_state() {
             session_uuid,
             Session {
                 session_name: "Perlica".to_owned(),
+                avatar: String::new(),
                 participants_ids: vec![perlica_uuid],
                 messages: collections::BTreeMap::new(),
                 id: 0u64,

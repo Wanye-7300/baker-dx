@@ -97,9 +97,14 @@ button {
   /* TODO: 渐变边框。上：#404040，下：#787878 */
   border: #737373 solid 2px;
   border-radius: 5px;
+  --card-padding: 10px;
+  padding: var(--card-padding);
   width: 100%;
   height: 80px;
   cursor: pointer;
+  gap: 15px;
+  align-items: center;
+  font-size: 1.15em;
 }
 
 .card:last-child {
@@ -108,6 +113,18 @@ button {
 
 .card:hover {
   background-color: #4c4c4c;
+}
+
+#card-img-wrapper {
+  border: #555455 solid 1px;
+  border-radius: 4px;
+  height: 100%;
+  overflow: hidden;
+}
+
+#card-img-wrapper > img {
+  height: 100%;
+  scale: 1.28;
 }
 
 #session {
@@ -228,6 +245,7 @@ button {
 #more-menu-wrapper {
   position: absolute;
   width: 100%;
+  min-height: 400px;
   height: 40%;
   border-radius: 15px;
   bottom: 0;
@@ -285,6 +303,7 @@ button {
 
 @keyframes more-menu-wrapper-popup {
   from {
+    min-height: var(--input-area-height);
     height: var(--input-area-height);
   }
 }

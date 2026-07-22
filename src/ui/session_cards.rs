@@ -43,8 +43,13 @@ pub(super) fn Card(uuid: Uuid, name: String) -> Element {
     rsx! {
         div {
             key: "{uuid.to_string()}",
-            class: "card",
+            class: "card flex flex-row",
             onclick: on_choose_card,
+
+            div { id: "card-img-wrapper",
+                img { src: crate::ui::assets::get_avatar(&baker_state.sessions.get(&uuid).unwrap().avatar) }
+            }
+
             {name}
         }
     }
