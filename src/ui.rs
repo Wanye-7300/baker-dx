@@ -3,7 +3,7 @@ use std::collections;
 use dioxus::prelude::*;
 use uuid::Uuid;
 
-mod assets;
+pub(crate) mod assets;
 mod session;
 mod session_cards;
 
@@ -176,6 +176,8 @@ pub(crate) fn DialogNewSession(
 pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
     let mut name = use_signal(String::new);
+    // 若是空，则为未选择头像
+    let mut new_operator_avatar_id = use_signal(String::new);
 
     let mut edit_selected_operator_id = use_signal(|| None);
     let mut edit_selected_operator_name = use_signal(String::new);
@@ -184,16 +186,43 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
         Dialog { title: "管理干员列表", on_confirm: move |_| {}, uuid,
 
             div { id: "new-operator-dialog", class: "flex flex-column",
-                // 添加新干员的输入区
-                div { class: "flex flex-row",
-                    input {
-                        class: "form-input",
-                        placeholder: "干员名",
-                        value: name,
-                        onchange: move |evt| {
-                            *name.write() = evt.value();
-                        },
+                div { class: "menu",
+                    h3 { "添加干员" }
+
+                    // 添加新干员的输入区
+                    span { class: "flex flex-row",
+                        img {
+                            class: "new-operator-avatar",
+                            src: assets::get_avatar(new_operator_avatar_id.read().as_ref()),
+                        }
+                        div { class: "",
+                            label { "干员名" }
+                            input {
+                                r#type: "text",
+                                class: "form-input",
+                                placeholder: "",
+                                value: name,
+                                onchange: move |evt| {
+                                    *name.write() = evt.value();
+                                },
+                            }
+                        }
+
                     }
+
+                    label { r#for: "avatar-select", "头像" }
+                    select {
+                        name: "avatar",
+                        id: "avatar-select",
+                        onchange: move |evt| {
+                            new_operator_avatar_id.set(evt.value());
+                        },
+                        option { value: "", "选择头像" }
+                        for k in assets::CHARACTERS_AVATARS.keys() {
+                            option { value: k, "{assets::CHARACTERS_NAME[k]}" }
+                        }
+                    }
+                    br {}
                     button {
                         class: "dialog-buttons-confirm",
                         onclick: move |_| {
@@ -202,69 +231,77 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                                 baker_state
                                     .operators
                                     .write()
-                                    .insert(Uuid::new_v4(), crate::Operator { name: trimmed });
+                                    .insert(
+                                        Uuid::new_v4(),
+                                        crate::Operator {
+                                            name: trimmed,
+                                            avatar: new_operator_avatar_id(),
+                                        },
+                                    );
                                 name.write().clear();
                             }
                         },
                         "添加"
                     }
-                }
 
-                // 已有干员列表
-                div { class: "participants",
-                    for (id , op) in baker_state.operators.read().iter() {
-                        div { class: "participant participant-setting flex flex-row",
-                            span { class: "flex-1", "{op.name}" }
-                            span { class: "actions-participant-setting",
-                                span {
-                                    onclick: {
-                                        let id = *id;
-                                        move |_| {
-                                            baker_state.operators.write().remove(&id);
-                                        }
-                                    },
-                                    "删除此干员"
+                    h3 { "干员列表管理" }
+
+                    // 已有干员列表
+                    div { class: "participants",
+                        for (id , op) in baker_state.operators.read().iter() {
+                            div { class: "participant participant-setting flex flex-row",
+                                span { class: "flex-1", "{op.name}" }
+                                span { class: "actions-participant-setting",
+                                    span {
+                                        onclick: {
+                                            let id = *id;
+                                            move |_| {
+                                                baker_state.operators.write().remove(&id);
+                                            }
+                                        },
+                                        "删除此干员"
+                                    }
+                                    span {
+                                        onclick: {
+                                            let id = *id;
+                                            move |_| {
+                                                edit_selected_operator_id.set(Some(id));
+                                            }
+                                        },
+                                        "改名"
+                                    }
                                 }
-                                span {
-                                    onclick: {
-                                        let id = *id;
-                                        move |_| {
-                                            edit_selected_operator_id.set(Some(id));
-                                        }
-                                    },
-                                    "改名"
-                                }
-                            }
-                            if let Some(selected_id) = edit_selected_operator_id() {
-                                if selected_id == *id {
-                                    div { class: "edit-operator",
-                                        input {
-                                            r#type: "text",
-                                            value: "{edit_selected_operator_name()}",
-                                            onchange: move |evt| {
-                                                edit_selected_operator_name.set(evt.value());
-                                            },
-                                        }
-                                        button {
-                                            onclick: move |_| {
-                                                edit_selected_operator_id.set(None);
-                                            },
-                                            "取消"
-                                        }
-                                        button {
-                                            onclick: {
-                                                let id = *id;
-                                                move |_| {
-                                                    // TODO: Unicode 规范化
+                                if let Some(selected_id) = edit_selected_operator_id() {
+                                    if selected_id == *id {
+                                        div { class: "edit-operator",
+                                            input {
+                                                r#type: "text",
+                                                value: "{edit_selected_operator_name()}",
+                                                onchange: move |evt| {
+                                                    edit_selected_operator_name.set(evt.value());
+                                                },
+                                            }
+                                            button {
+                                                onclick: move |_| {
                                                     edit_selected_operator_id.set(None);
-                                                    if edit_selected_operator_name.is_empty() {
-                                                        return;
+                                                },
+                                                "取消"
+                                            }
+                                            button {
+                                                onclick: {
+                                                    let id = *id;
+                                                    move |_| {
+                                                        // TODO: Unicode 规范化
+                                                        edit_selected_operator_id.set(None);
+                                                        if edit_selected_operator_name.is_empty() {
+                                                            return;
+                                                        }
+                                                        baker_state.operators.get_mut(&id).unwrap().name = edit_selected_operator_name();
+                                                        edit_selected_operator_name.clear();
                                                     }
-                                                    baker_state.operators.get_mut(&id).unwrap().name = edit_selected_operator_name();
-                                                    edit_selected_operator_name.clear();
-                                                }
-                                            },
-                                            "确定"
+                                                },
+                                                "确定"
+                                            }
                                         }
                                     }
                                 }

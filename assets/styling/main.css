@@ -26,6 +26,11 @@ input[type="text"] {
   border-width: 0;
 }
 
+select,
+option {
+  color: black;
+}
+
 input:focus {
   outline: none;
 }
@@ -123,6 +128,7 @@ button {
   height: 65px;
   border: #838383 solid 2px;
   border-radius: 15px 15px 0 0;
+  /* TODO: header 底下有个小黑条 */
   background:
     var(--session-title-left-bar) repeat-y scroll left center / 25px,
     #3c3c3c var(--session-title-right-bar) no-repeat scroll right center / auto
@@ -232,7 +238,7 @@ button {
 }
 
 #more-menu-wrapper > *,
-#more-menu-wrapper > #more-menu > * {
+.menu * {
   color: black;
 }
 
@@ -250,25 +256,25 @@ button {
   display: none;
 }
 
-#more-menu h1,
-#more-menu h2,
-#more-menu h3,
-#more-menu h4,
-#more-menu h5,
-#more-menu h6 {
+.menu h1,
+.menu h2,
+.menu h3,
+.menu h4,
+.menu h5,
+.menu h6 {
   margin-bottom: 0;
 }
 
-#more-menu *:nth-child(1) {
+.menu *:nth-child(1) {
   margin-top: 0;
 }
 
-#more-menu label:has(+ input[type="text"]) {
+.menu label:has(+ input[type="text"]) {
   position: absolute;
   transform: translateX(10px) translateY(4px);
 }
 
-#more-menu input[type="text"] {
+.menu input[type="text"] {
   margin-top: 15px;
   font-size: 1.2em;
   height: 2em;
@@ -379,6 +385,7 @@ button {
 .message-bubble-wrapper:hover > .actions,
 .actions:hover {
   visibility: visible;
+  animation: actions-show 0.1s linear forwards;
 }
 
 .actions > span {
@@ -390,6 +397,16 @@ button {
 .actions > span:hover {
   text-decoration: underline;
   color: oklch(80.9% 0.105 251.813);
+}
+
+@keyframes actions-show {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .message-bubble-others {
@@ -458,6 +475,7 @@ button {
   padding: 15px;
   border-radius: 3px;
   z-index: 326;
+  animation: dialog-popup 0.15s ease-out forwards;
 }
 
 .dialog-title {
@@ -474,6 +492,9 @@ button {
 .dialog-title-close {
   background-color: #00000000;
   border: 0px;
+  width: 20px;
+  height: 20px;
+  font-size: 1.2em;
 }
 
 .dialog-title-close:hover {
@@ -499,6 +520,18 @@ button {
 
 .dialog-buttons-confirm:hover {
   background-color: #fdfc0090;
+}
+
+@keyframes dialog-popup {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .form-input {
@@ -528,6 +561,11 @@ button {
 }
 
 #new-operator-dialog {
+}
+
+.new-operator-avatar {
+  width: 100px;
+  height: 100px;
 }
 
 .participants {

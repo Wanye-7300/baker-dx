@@ -76,7 +76,14 @@ fn SessionMainContent() -> Element {
             ));
         } else {
             if !temporary.is_empty() {
-                messages.push((sender_uuid_now.is_some(), temporary));
+                messages.push((
+                    sender_uuid_now.is_some(),
+                    match sender_uuid_now {
+                        Some(uuid) => crate::ui::assets::get_avatar(&baker_state.operators.read()[&uuid].avatar),
+                        None => crate::ui::assets::get_avatar("endministratorf"),
+                    },
+                    temporary,
+                ));
             }
             if peek.is_none() {
                 break;
@@ -93,8 +100,8 @@ fn SessionMainContent() -> Element {
 
     rsx! {
         div { id: "session-main-content",
-            for (avatar_on_left , messages) in messages {
-                MessageRow { avatar_on_left, messages }
+            for (avatar_on_left , avatar , messages) in messages {
+                MessageRow { avatar_on_left, avatar, messages }
             }
         }
     }
@@ -205,7 +212,6 @@ fn MoreMenu(current_session: Signal<Option<Uuid>>) -> Element {
             .cloned()
             .collect()
     });
-    info!("{:?}", participants_ids);
 
     let mut animation_end = use_signal(|| false);
 
@@ -216,7 +222,7 @@ fn MoreMenu(current_session: Signal<Option<Uuid>>) -> Element {
                 animation_end.set(true);
             },
             if animation_end() {
-                div { id: "more-menu",
+                div { id: "more-menu", class: "menu",
                     h3 { "会话设置" }
                     label { "会话名" }
                     input {
@@ -246,7 +252,7 @@ fn MoreMenu(current_session: Signal<Option<Uuid>>) -> Element {
 }
 
 #[component]
-fn MessageRow(avatar_on_left: bool, messages: Vec<(u64, String, bool)>) -> Element {
+fn MessageRow(avatar_on_left: bool, avatar: Asset, messages: Vec<(u64, String, bool)>) -> Element {
     let avatar_left_class = if avatar_on_left {
         "message-row-avatar message-row-avatar-background"
     } else {
@@ -264,7 +270,7 @@ fn MessageRow(avatar_on_left: bool, messages: Vec<(u64, String, bool)>) -> Eleme
             // 左侧头像
             div { class: avatar_left_class,
                 if avatar_on_left {
-                    img { src: crate::AVATAR_PERLICA }
+                    img { src: avatar }
                 }
             }
             // 中间消息
@@ -276,7 +282,7 @@ fn MessageRow(avatar_on_left: bool, messages: Vec<(u64, String, bool)>) -> Eleme
             // 右侧头像
             div { class: avatar_right_class,
                 if !avatar_on_left {
-                    img { src: crate::AVATAR_ENDMINF }
+                    img { src: avatar }
                 }
             }
         }

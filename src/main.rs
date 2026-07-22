@@ -17,6 +17,7 @@ mod utils;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Operator {
     name: String,
+    avatar: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -76,19 +77,15 @@ const FONT_MEDIUM: Asset = asset!("/assets/HarmonyOS_Sans_SC_Medium.ttf");
 const FONT_BOLD: Asset = asset!("/assets/HarmonyOS_Sans_SC_Bold.ttf");
 const FONT_BLACK: Asset = asset!("/assets/HarmonyOS_Sans_SC_Black.ttf");
 const FONT_BENDER: Asset = asset!("/assets/bender.otf");
-
-const AVATAR_ENDMINF: Asset = asset!("/assets/extracted/avatar/operator/icon_round_chr_0003_endminf.png");
-const AVATAR_PERLICA: Asset = asset!("/assets/extracted/avatar/operator/icon_round_chr_0004_pelica.png");
-
 const AVATAR_BACKGROUND: Asset = asset!("/assets/extracted/mask/mask_snscharentry_head.png");
 const AVATAR_FRAME: Asset = asset!("/assets/extracted/bg/bg_snscharentry_head_Line.png");
 
-const MESSAGE_BUBBLE_SELF: Asset = asset!("/assets/deco/bg_snscontenttextorpic_chat_04.png");
-const MESSAGE_BUBBLE_OTHERS: Asset = asset!("/assets/deco/bg_snscontenttextorpic_chat.png");
+const MESSAGE_BUBBLE_SELF: Asset = asset!("/assets/deco/bg_message_right.png");
+const MESSAGE_BUBBLE_OTHERS: Asset = asset!("/assets/deco/bg_message_left.png");
 const SESSION_TITLE_LEFT_BAR: Asset = asset!("/assets/deco/session_title_left_bar.png");
 const SESSION_TITLE_RIGHT_BAR: Asset = asset!("/assets/deco/session_title_right_bar.png");
 const ICON_SNS_MESSAGE_02: Asset = asset!("/assets/extracted/icon/icon_sns_message_02.png");
-const ICON_SNS_CHAT_EMOTICON: Asset = asset!("/assets/deco/icon_sns_chat_emoticon.png");
+const ICON_SNS_CHAT_EMOTICON: Asset = asset!("/assets/deco/input_area_emoticon.png");
 const INPUT_AREA_MORE: Asset = asset!("/assets/deco/input_area_more.png");
 
 fn main() {
@@ -104,12 +101,14 @@ fn provide_baker_state() {
             perlica_uuid,
             Operator {
                 name: "Perlica".to_owned(),
+                avatar: "perlica".to_owned(),
             },
         );
         operators.insert(
             Uuid::new_v4(),
             Operator {
                 name: "Chen Qianyu".to_owned(),
+                avatar: "chenqy".to_owned(),
             },
         );
         operators

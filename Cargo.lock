@@ -258,6 +258,7 @@ dependencies = [
  "serde",
  "serde_json",
  "uuid",
+ "walkdir",
  "web-sys",
 ]
 
