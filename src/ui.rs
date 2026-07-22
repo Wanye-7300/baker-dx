@@ -1,3 +1,5 @@
+use std::collections;
+
 use dioxus::prelude::*;
 use uuid::Uuid;
 
@@ -24,6 +26,47 @@ pub(super) fn Baker() -> Element {
 
         for (_uuid , dialog) in dialogs.iter() {
             {dialog}
+        }
+    }
+}
+
+#[component]
+pub(crate) fn ParticipantsSelection(participants_ids: Signal<fnv::FnvHashSet<Uuid>>) -> Element {
+    let baker_state = use_context::<crate::BakerState>();
+    let operators = (*baker_state.operators.read()).clone();
+
+    rsx! {
+        div { class: "participants",
+            for (k , v) in operators {
+                div {
+                    class: "participant",
+                    onclick: move |_| {
+                        if participants_ids.read().get(&k).is_none() {
+                            participants_ids.write().insert(k);
+                        } else {
+                            participants_ids.write().remove(&k);
+                        }
+                    },
+                    input {
+                        r#type: "checkbox",
+                        id: k.to_string(),
+                        name: k.to_string(),
+                        checked: participants_ids.read().get(&k).is_some(),
+                        onchange: move |_| {
+                            if participants_ids.read().get(&k).is_none() {
+                                participants_ids.write().insert(k);
+                            } else {
+                                participants_ids.write().remove(&k);
+                            }
+                        },
+                    }
+                    label { r#for: k.to_string(),
+                        {v.name.clone()}
+                        {"   "}
+                        {k.to_string()}
+                    }
+                }
+            }
         }
     }
 }
@@ -72,14 +115,35 @@ pub(crate) fn Dialog(title: String, on_confirm: EventHandler, uuid: Uuid, childr
 pub(crate) fn DialogNewSession(
     session_name: Signal<String>,
     participants_ids: Signal<fnv::FnvHashSet<Uuid>>,
-    on_confirm: EventHandler,
     uuid: Uuid,
 ) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
-    let operators = (*baker_state.operators.read()).clone();
 
     rsx! {
-        Dialog { title: "添加新会话", on_confirm, uuid,
+        Dialog {
+            title: "添加新会话",
+            on_confirm: move |_| {
+                let mut baker_state = use_context::<crate::BakerState>();
+                baker_state
+                    .sessions
+                    .write()
+                    .insert(
+                        Uuid::new_v4(),
+                        crate::Session {
+                            session_name: session_name(),
+                            participants_ids: participants_ids
+                                .read()
+                                .iter()
+                                .cloned()
+                                .collect::<Vec<Uuid>>(),
+                            messages: collections::BTreeMap::new(),
+                            id: 0,
+                        },
+                    );
+                baker_state.dialogs.write().remove(&uuid);
+                participants_ids.clear();
+            },
+            uuid,
             div { id: "new-sessions-dialog", class: "flex flex-column",
                 button {
                     id: "button-new-operator",
@@ -102,38 +166,7 @@ pub(crate) fn DialogNewSession(
                     },
                 }
 
-                div { class: "participants",
-                    for (k , v) in operators {
-                        div {
-                            class: "participant",
-                            onclick: move |_| {
-                                if participants_ids.read().get(&k).is_none() {
-                                    participants_ids.write().insert(k);
-                                } else {
-                                    participants_ids.write().remove(&k);
-                                }
-                            },
-                            input {
-                                r#type: "checkbox",
-                                id: k.to_string(),
-                                name: k.to_string(),
-                                checked: participants_ids.read().get(&k).is_some(),
-                                onchange: move |_| {
-                                    if participants_ids.read().get(&k).is_none() {
-                                        participants_ids.write().insert(k);
-                                    } else {
-                                        participants_ids.write().remove(&k);
-                                    }
-                                },
-                            }
-                            label { r#for: k.to_string(),
-                                {v.name.clone()}
-                                {"   "}
-                                {k.to_string()}
-                            }
-                        }
-                    }
-                }
+                ParticipantsSelection { participants_ids }
             }
         }
     }
@@ -213,11 +246,8 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                                             },
                                         }
                                         button {
-                                            onclick: {
-                                                let id = *id;
-                                                move |_| {
-                                                    edit_selected_operator_id.set(None);
-                                                }
+                                            onclick: move |_| {
+                                                edit_selected_operator_id.set(None);
                                             },
                                             "取消"
                                         }

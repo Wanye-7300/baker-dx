@@ -1,5 +1,3 @@
-use std::collections;
-
 use dioxus::prelude::*;
 use uuid::Uuid;
 
@@ -19,31 +17,7 @@ pub(super) fn SessionCards(session_name: Signal<String>, participants_ids: Signa
                 onclick: move |_| {
                     let uuid = Uuid::new_v4();
                     baker_state.dialogs.write().insert(uuid, rsx! {
-                        super::DialogNewSession {
-                            session_name,
-                            participants_ids,
-                            on_confirm: move |_| {
-                                let mut baker_state = use_context::<crate::BakerState>();
-                                baker_state
-                                    .sessions
-                                    .write()
-                                    .insert(
-                                        Uuid::new_v4(),
-                                        crate::Session {
-                                            session_name: session_name(),
-                                            participants_ids: participants_ids
-                                                .read()
-                                                .iter()
-                                                .cloned()
-                                                .collect::<Vec<Uuid>>(),
-                                            messages: collections::BTreeMap::new(),
-                                            id: 0,
-                                        },
-                                    );
-                                baker_state.dialogs.write().remove(&uuid);
-                            },
-                            uuid,
-                        }
+                        super::DialogNewSession { session_name, participants_ids, uuid }
                     });
                 },
                 "添加新会话"

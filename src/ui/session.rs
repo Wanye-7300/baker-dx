@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use uuid::Uuid;
 
 #[component]
 pub(super) fn SessionUI() -> Element {
@@ -6,10 +7,13 @@ pub(super) fn SessionUI() -> Element {
     let sessions = baker_state.sessions;
     let current_session = baker_state.current_session;
 
+    let with_more_menu_open = use_signal(|| false);
+
     if current_session.read().is_some() {
         // TODO: 虽然 current_session.read().unwrap() 正常情况下是保证正确的 —— 但是谁知道呢？SessionMainContent 与
         // InputArea 同
-        let current_session_name = sessions.read()[&current_session.read().unwrap()].session_name.clone();
+        let uuid = current_session.read().unwrap();
+        let current_session_name = sessions.read()[&uuid].session_name.clone();
 
         rsx! {
             div { id: "session", class: "flex flex-column",
@@ -18,7 +22,10 @@ pub(super) fn SessionUI() -> Element {
                 }
                 div { id: "session-main", class: "flex flex-column",
                     SessionMainContent {}
-                    InputArea {}
+                    InputArea { with_more_menu_open }
+                    if with_more_menu_open() {
+                        MoreMenu { current_session }
+                    }
                 }
             }
         }
@@ -94,7 +101,7 @@ fn SessionMainContent() -> Element {
 }
 
 #[component]
-fn InputArea() -> Element {
+fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
 
     let mut value = use_signal(String::new);
@@ -146,8 +153,14 @@ fn InputArea() -> Element {
         submit(evt.modifiers().ctrl());
     };
 
+    let input_area_style = if with_more_menu_open() {
+        "input-area-with-menu flex flex-row"
+    } else {
+        "flex flex-row"
+    };
+
     rsx! {
-        div { id: "input-area", class: "flex flex-row",
+        div { id: "input-area", class: input_area_style.to_string(),
             div { id: "input-area-input",
                 input {
                     id: "input-area-input-input",
@@ -163,7 +176,71 @@ fn InputArea() -> Element {
             }
             button { id: "input-area-submit", onclick: on_submit_click }
             button { id: "input-area-stickers" }
-            button { id: "input-area-more" }
+            button {
+                id: "input-area-more",
+                onclick: move |_| {
+                    if with_more_menu_open() {
+                        with_more_menu_open.set(false);
+                    } else {
+                        with_more_menu_open.set(true);
+                    }
+                },
+            }
+        }
+    }
+}
+
+#[component]
+fn MoreMenu(current_session: Signal<Option<Uuid>>) -> Element {
+    let mut baker_state = use_context::<crate::BakerState>();
+    let session_id = current_session.unwrap();
+    let session_name = baker_state.sessions.get(&session_id).unwrap().session_name.clone();
+    let participants_ids = use_signal(|| {
+        baker_state
+            .sessions
+            .get(&session_id)
+            .unwrap()
+            .participants_ids
+            .iter()
+            .cloned()
+            .collect()
+    });
+    info!("{:?}", participants_ids);
+
+    let mut animation_end = use_signal(|| false);
+
+    rsx! {
+        div {
+            id: "more-menu-wrapper",
+            onanimationend: move |_| {
+                animation_end.set(true);
+            },
+            if animation_end() {
+                div { id: "more-menu",
+                    h3 { "会话设置" }
+                    label { "会话名" }
+                    input {
+                        r#type: "text",
+                        value: session_name.to_string(),
+                        onchange: move |evt| {
+                            baker_state.sessions.write().get_mut(&session_id).unwrap().session_name = evt
+                                .value();
+                        },
+                        {session_name.to_string()}
+                    }
+                    div { class: "more-menu-actions",
+                        span {
+                            onclick: move |_| {
+                                baker_state.sessions.write().retain(|k, _| { *k != session_id });
+                                baker_state.current_session.set(None);
+                            },
+                            "删除此会话（消息会永久消失！）"
+                        }
+                    }
+                    h3 { "干员管理" }
+                    super::ParticipantsSelection { participants_ids }
+                }
+            }
         }
     }
 }
