@@ -129,7 +129,7 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
 
     let mut value = use_signal(String::new);
 
-    let mut with_sender_selector_open = use_signal(|| true);
+    let mut with_sender_selector_open = use_signal(|| false);
 
     let mut submit = move |sender_uuid: Option<Uuid>| {
         if value.is_empty() {
@@ -174,6 +174,11 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
     } else {
         "flex flex-row"
     };
+
+    use_effect(move || {
+        baker_state.current_session.read();
+        with_more_menu_open.set(false);
+    });
 
     rsx! {
         div { id: "input-area", class: input_area_style.to_string(),
