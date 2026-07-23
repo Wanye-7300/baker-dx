@@ -70,6 +70,7 @@ enum Route {
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const NORMALIZE_CSS: Asset = asset!("/assets/styling/normalize.css");
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
+const SELECTOR_CSS: Asset = asset!("/assets/styling/selector.css");
 
 const FONT_THIN: Asset = asset!("/assets/HarmonyOS_Sans_SC_Thin.ttf");
 const FONT_LIGHT: Asset = asset!("/assets/HarmonyOS_Sans_SC_Light.ttf");
@@ -253,6 +254,7 @@ fn App() -> Element {
             ":root {{ --avatar-background: url(\"{avatar_background_bundled_path}\"); --avatar-frame: url(\"{avatar_frame_bundled_path}\"); --message-bubble-self: url(\"{message_bubble_self_bundled_path}\"); --message-bubble-others: url(\"{message_bubble_others_bundled_path}\"); --session-title-left-bar: url(\"{session_title_left_bar_bundled_path}\"); --session-title-right-bar: url(\"{session_title_right_bar_bundled_path}\"); --icon-sns-chat-emoticon: url(\"{icon_sns_chat_emoticon_bundled_path}\"); --icon-sns-message-02: url(\"{icon_sns_message_02_bundled_path}\"); --input-area-more: url(\"{input_area_more_bundled_path}\"); }}"
         }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
+        document::Link { rel: "stylesheet", href: SELECTOR_CSS }
 
         Router::<Route> {}
     }

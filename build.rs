@@ -21,7 +21,7 @@ fn main() {
         let relative = entry.path().to_string_lossy().replace("\\", "/");
 
         code.write_fmt(format_args!(
-            "pub(crate) const {stem}: Asset = asset!(\"{relative}\");\n"
+            "#[allow(unused)] pub(crate) const {stem}: Asset = asset!(\"{relative}\");\n"
         ))
         .unwrap();
     }

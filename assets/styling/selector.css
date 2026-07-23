@@ -1,0 +1,36 @@
+.selector {
+  position: absolute;
+  background-color: #eeecec;
+  padding: 5px 0;
+  bottom: calc(var(--input-area-height) + 10px);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: 200px;
+  width: 200px;
+  animation: selector-popup 0.1s ease-in forwards;
+  z-index: 328;
+}
+
+@keyframes selector-popup {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.selector > h3 {
+  color: black;
+  margin: 5px 5px 5px 10px;
+  font-size: 1em;
+}
+
+.selector > button {
+  padding: 5px;
+  width: 100%;
+  transition: background-color 0.05s ease-in;
+}
+
+.selector > button:hover {
+  background-color: #c2c2c2;
+}

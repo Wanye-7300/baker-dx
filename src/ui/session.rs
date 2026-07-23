@@ -1,6 +1,8 @@
 use dioxus::prelude::*;
 use uuid::Uuid;
 
+pub(crate) mod selector;
+
 #[component]
 pub(super) fn SessionUI() -> Element {
     let baker_state = use_context::<crate::BakerState>();
@@ -55,6 +57,7 @@ fn SessionMainContent() -> Element {
         }
 
         spawn(async {
+            // TODO: 使用 MountedData
             let _ = document::eval(
                 "\n\
             let element = document.querySelector('#session-main-content');\n\
@@ -110,29 +113,31 @@ fn SessionMainContent() -> Element {
 #[component]
 fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
+    let participants_ids_count = baker_state
+        .sessions
+        .get(&baker_state.current_session.unwrap())
+        .unwrap()
+        .participants_ids
+        .len();
+    let first_participant = *baker_state
+        .sessions
+        .get(&baker_state.current_session.unwrap())
+        .unwrap()
+        .participants_ids
+        .first()
+        .unwrap();
 
     let mut value = use_signal(String::new);
 
-    let mut submit = move |ctrl: bool| {
+    let mut with_sender_selector_open = use_signal(|| true);
+
+    let mut submit = move |sender_uuid: Option<Uuid>| {
         if value.is_empty() {
             return;
         }
 
         let mut sessions = baker_state.sessions;
         let current_session = baker_state.current_session;
-
-        let sender_uuid = if ctrl {
-            // 如果 participants_ids 里没有干员了，那就让 Endministrator 顶替下先（None）
-            sessions
-                .read()
-                .get(&current_session.read().unwrap())
-                .unwrap()
-                .participants_ids
-                .first()
-                .copied()
-        } else {
-            None
-        };
 
         let insert_id = sessions.read().get(&current_session.read().unwrap()).unwrap().id;
 
@@ -156,8 +161,12 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
         *baker_state.need_to_scroll_down.write() = true;
     };
 
-    let on_submit_click = move |evt: Event<MouseData>| {
-        submit(evt.modifiers().ctrl());
+    let on_submit_click = move |evt: Event<MouseData>| match evt.modifiers().ctrl() {
+        true => match participants_ids_count {
+            1 => submit(Some(first_participant)),
+            _ => with_sender_selector_open.set(true),
+        },
+        false => submit(None),
     };
 
     let input_area_style = if with_more_menu_open() {
@@ -174,7 +183,15 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
                     oninput: move |evt| { value.set(evt.value()) },
                     onkeypress: move |evt: Event<KeyboardData>| {
                         if evt.code() == Code::Enter {
-                            submit(evt.modifiers().ctrl());
+                            match evt.modifiers().ctrl() {
+                                true => {
+                                    match participants_ids_count {
+                                        1 => submit(Some(first_participant)),
+                                        _ => with_sender_selector_open.set(true),
+                                    }
+                                }
+                                false => submit(None),
+                            }
                         }
                     },
                     r#type: "text",
@@ -192,6 +209,27 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
                         with_more_menu_open.set(true);
                     }
                 },
+            }
+
+            if with_sender_selector_open() {
+                selector::Selector {
+                    kv: baker_state
+                        .sessions
+                        .get(&baker_state.current_session.unwrap())
+                        .unwrap()
+                        .participants_ids
+                        .iter()
+                        .map(|x| (*x, baker_state.operators.get(x).unwrap().name.clone()))
+                        .collect(),
+                    title: "选择发送者",
+                    func: move |uuid| {
+                        submit(Some(uuid));
+                        with_sender_selector_open.set(false);
+                    },
+                    on_close: move |_| {
+                        with_sender_selector_open.set(false);
+                    },
+                }
             }
         }
     }
