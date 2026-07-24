@@ -11,6 +11,7 @@ use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+mod database;
 mod ui;
 mod utils;
 
@@ -20,10 +21,19 @@ struct Operator {
     avatar: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+enum MessageType {
+    Text(String),
+
+    /// TODO: 犹待使用
+    Image(Uuid),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 struct Message {
+    #[serde(skip_serializing_if = "Option::is_none")]
     sender: Option<Uuid>,
-    content: String,
+    content: MessageType,
     #[serde(skip_serializing)]
     #[serde(default)]
     animation: bool,
@@ -58,6 +68,7 @@ struct BakerState {
     current_session: Signal<Option<Uuid>>,
     need_to_scroll_down: Signal<bool>,
     dialogs: Signal<fnv::FnvHashMap<Uuid, Element>>,
+    messages: Signal<Option<collections::BTreeMap<u64, Message>>>,
 }
 
 #[derive(Debug, Clone, Routable, PartialEq)]
@@ -141,6 +152,8 @@ fn provide_baker_state() {
 
     let need_to_scroll_down = use_signal(|| false);
 
+    let messages = use_signal(|| None);
+
     let dialogs = use_signal(fnv::FnvHashMap::default);
     use_context_provider(|| BakerState {
         operators,
@@ -148,12 +161,16 @@ fn provide_baker_state() {
         current_session,
         need_to_scroll_down,
         dialogs,
+        messages,
     });
 }
 
 #[component]
 fn App() -> Element {
     provide_baker_state();
+    spawn(async {
+        database::open_db().await.unwrap();
+    });
 
     let baker_state = use_context::<BakerState>();
     use_effect(move || {

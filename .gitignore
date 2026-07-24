@@ -9,3 +9,6 @@
 **/*.rs.bk
 
 /.idea
+
+# rustc-ice
+rustc-ice-*

@@ -8,13 +8,18 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
+anyhow = "1.0.104"
 dioxus = { version = "0.7.9", features = ["router"] }
 dioxus-sdk = { version = "0.7.0" }
 fnv = "1.0.7"
+futures = "0.3.33"
+futures-util = "0.3.33"
+indexed_db_futures = { version = "0.6.4", features = ["async-upgrade", "cursors", "indices", "serde", "streams", "version-change"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 uuid = { version = "1.23.2", features = ["js", "fast-rng", "v4", "serde"] }
-web-sys = { version = "0.3.100", features = ["Storage", "Window"] }
+wasm-bindgen-futures = "0.4.76"
+web-sys = { version = "0.3.100", features = ["Storage", "Window", "Blob"] }
 
 [build-dependencies]
 walkdir = "2.5"

@@ -41,15 +41,14 @@ pub(super) fn SessionUI() -> Element {
 #[component]
 fn SessionMainContent() -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
-    let sessions = baker_state.sessions;
 
-    let current_session = baker_state.current_session;
-    let current_session = &sessions.read()[&current_session.read().unwrap()];
-    let mut iter = current_session.messages.iter().peekable();
+    use_resource(move || async move {
+        let current_session_uuid = baker_state.current_session.read().unwrap();
+        let messages = crate::database::get_messages(current_session_uuid).await.unwrap();
+        baker_state.messages.set(Some(messages));
 
-    let mut messages = vec![];
-    let mut temporary = vec![]; // 用于判断一组消息是不是一个人发的，然后塞进 messages
-    let mut sender_uuid_now = iter.peek().and_then(|x| x.1.sender);
+        baker_state.need_to_scroll_down.set(true);
+    });
 
     use_effect(move || {
         if !*baker_state.need_to_scroll_down.read() {
@@ -69,42 +68,61 @@ fn SessionMainContent() -> Element {
         *baker_state.need_to_scroll_down.write() = false;
     });
 
-    loop {
-        let peek = iter.peek();
-        if peek.is_some_and(|x| x.1.sender == sender_uuid_now) {
-            temporary.push((
-                *peek.unwrap().0,
-                peek.unwrap().1.content.clone(),
-                peek.unwrap().1.animation,
-            ));
-        } else {
-            if !temporary.is_empty() {
-                messages.push((
-                    sender_uuid_now.is_some(),
-                    match sender_uuid_now {
-                        Some(uuid) => crate::ui::assets::get_avatar(&baker_state.operators.read()[&uuid].avatar),
-                        None => crate::ui::assets::get_avatar("endministratorf"),
-                    },
-                    temporary,
+    let mut messages = vec![];
+
+    if let Some(m) = baker_state.messages.read().as_ref() {
+        let mut iter = m.iter().peekable();
+
+        let mut temporary = vec![]; // 用于判断一组消息是不是一个人发的，然后塞进 messages
+        let mut sender_uuid_now = iter.peek().and_then(|x| x.1.sender);
+
+        loop {
+            let peek = iter.peek();
+            if peek.is_some_and(|x| x.1.sender == sender_uuid_now) {
+                temporary.push((
+                    *peek.unwrap().0,
+                    peek.unwrap().1.content.clone(),
+                    peek.unwrap().1.animation,
                 ));
+            } else {
+                if !temporary.is_empty() {
+                    messages.push((
+                        sender_uuid_now.is_some(),
+                        match sender_uuid_now {
+                            Some(uuid) => crate::ui::assets::get_avatar(&baker_state.operators.read()[&uuid].avatar),
+                            None => crate::ui::assets::get_avatar("endministratorf"),
+                        },
+                        temporary,
+                    ));
+                }
+                if peek.is_none() {
+                    break;
+                }
+                temporary = vec![(
+                    *peek.unwrap().0,
+                    peek.unwrap().1.content.clone(),
+                    peek.unwrap().1.animation,
+                )];
+                sender_uuid_now = peek.and_then(|x| x.1.sender);
             }
-            if peek.is_none() {
-                break;
-            }
-            temporary = vec![(
-                *peek.unwrap().0,
-                peek.unwrap().1.content.clone(),
-                peek.unwrap().1.animation,
-            )];
-            sender_uuid_now = peek.and_then(|x| x.1.sender);
+            iter.next();
         }
-        iter.next();
     }
 
     rsx! {
         div { id: "session-main-content",
             for (avatar_on_left , avatar , messages) in messages {
-                MessageRow { avatar_on_left, avatar, messages }
+                MessageRow {
+                    avatar_on_left,
+                    avatar,
+                    messages,
+                    on_delete_message: move |(session_uuid, message_id)| {
+                        spawn(async move {
+                            info!("session_uuid {session_uuid}, message_id {message_id}");
+                            crate::database::delete_message(session_uuid, message_id).await.unwrap();
+                        });
+                    },
+                }
             }
         }
     }
@@ -137,25 +155,30 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
         }
 
         let mut sessions = baker_state.sessions;
-        let current_session = baker_state.current_session;
+        let current_session = baker_state.current_session.unwrap();
 
-        let insert_id = sessions.read().get(&current_session.read().unwrap()).unwrap().id;
+        let insert_id = sessions.read().get(&current_session).unwrap().id;
 
-        sessions.write().get_mut(&current_session.read().unwrap()).unwrap().id += 1;
+        sessions.write().get_mut(&current_session).unwrap().id += 1;
 
-        sessions
-            .write()
-            .get_mut(&current_session.read().unwrap())
-            .unwrap()
-            .messages
-            .insert(
-                insert_id,
-                crate::Message {
-                    sender: sender_uuid,
-                    content: value(),
-                    animation: true,
-                },
-            );
+        let message = crate::Message {
+            sender: sender_uuid,
+            content: crate::MessageType::Text(value()),
+            animation: true,
+        };
+
+        let message_wrapper = crate::database::MessageWrapper {
+            session_uuid: current_session,
+            message_id: insert_id,
+            message: message.clone(),
+        };
+
+        spawn(async move {
+            crate::database::put_messages(vec![message_wrapper]).await.unwrap();
+        });
+
+        let mut messages = baker_state.messages.write();
+        messages.as_mut().unwrap().insert(insert_id, message);
         value.set(String::new());
 
         *baker_state.need_to_scroll_down.write() = true;
@@ -295,7 +318,12 @@ fn MoreMenu(current_session: Signal<Option<Uuid>>) -> Element {
 }
 
 #[component]
-fn MessageRow(avatar_on_left: bool, avatar: Asset, messages: Vec<(u64, String, bool)>) -> Element {
+fn MessageRow(
+    avatar_on_left: bool,
+    avatar: Asset,
+    messages: Vec<(u64, crate::MessageType, bool)>,
+    on_delete_message: EventHandler<(Uuid, u64)>,
+) -> Element {
     let avatar_left_class = if avatar_on_left {
         "message-row-avatar message-row-avatar-background"
     } else {
@@ -319,7 +347,12 @@ fn MessageRow(avatar_on_left: bool, avatar: Asset, messages: Vec<(u64, String, b
             // 中间消息
             div { class: if avatar_on_left { "message-row-content message-row-content-left" } else { "message-row-content message-row-content-right" },
                 for message in messages {
-                    MessageBubble { key: "{message.0}", avatar_on_left, message }
+                    MessageBubble {
+                        key: "{message.0}",
+                        avatar_on_left,
+                        message,
+                        on_delete_message,
+                    }
                 }
             }
             // 右侧头像
@@ -333,18 +366,23 @@ fn MessageRow(avatar_on_left: bool, avatar: Asset, messages: Vec<(u64, String, b
 }
 
 #[component]
-fn MessageBubble(avatar_on_left: bool, message: (u64, String, bool)) -> Element {
+fn MessageBubble(
+    avatar_on_left: bool,
+    message: (u64, crate::MessageType, bool),
+    on_delete_message: EventHandler<(Uuid, u64)>,
+) -> Element {
     let message_id = message.0;
 
     let delete_messages = move |_| {
         let mut baker_state = use_context::<crate::BakerState>();
-        baker_state
-            .sessions
-            .write()
-            .get_mut(&baker_state.current_session.read().unwrap())
-            .unwrap()
-            .messages
-            .remove(&message_id);
+
+        let session_uuid = baker_state.current_session.unwrap();
+        let message_id = message_id;
+
+        on_delete_message.call((session_uuid, message_id));
+
+        let messages = baker_state.messages.as_mut();
+        messages.unwrap().remove(&message_id);
     };
 
     // TODO: 添加 修改 和 插入消息的功能
@@ -383,7 +421,13 @@ fn MessageBubble(avatar_on_left: bool, message: (u64, String, bool)) -> Element 
             if !avatar_on_left {
                 {message_actions_right}
             }
-            span { class: bubble_class, {message.1} }
+            match message.1 {
+                crate::MessageType::Text(text) => rsx! {
+                    span { class: bubble_class, {text} }
+                },
+                crate::MessageType::Image(_uuid) => rsx! {},
+            }
+
             if avatar_on_left {
                 {message_actions_left}
             }

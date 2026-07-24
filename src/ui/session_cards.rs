@@ -47,7 +47,11 @@ pub(super) fn Card(uuid: Uuid, name: String) -> Element {
             onclick: on_choose_card,
 
             div { id: "card-img-wrapper",
-                img { src: crate::ui::assets::get_avatar(&baker_state.sessions.get(&uuid).unwrap().avatar) }
+                img {
+                    src: crate::ui::assets::get_group_avatar(
+                        &baker_state.sessions.get(&uuid).unwrap().avatar,
+                    ),
+                }
             }
 
             {name}
