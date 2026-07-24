@@ -61,6 +61,17 @@ impl Session {
     }
 }
 
+/// 决定输入框的行为。
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
+enum InputAreaMode {
+    /// 正常模式：消息将被正常发送到会话末尾
+    #[default]
+    Normal,
+
+    /// 插入模式：将在给定的 id 之前插入
+    Insert { id: u64 },
+}
+
 #[derive(Clone, Debug)]
 struct BakerState {
     operators: Signal<fnv::FnvHashMap<Uuid, Operator>>,
@@ -69,6 +80,7 @@ struct BakerState {
     need_to_scroll_down: Signal<bool>,
     dialogs: Signal<fnv::FnvHashMap<Uuid, Element>>,
     messages: Signal<Option<collections::BTreeMap<u64, Message>>>,
+    input_area_mode: Signal<InputAreaMode>,
 }
 
 #[derive(Debug, Clone, Routable, PartialEq)]
@@ -144,17 +156,14 @@ fn provide_baker_state() {
 
     let operators = utils::get_item_or_default("operators", default_operators);
     let sessions = utils::get_item_or_default("sessions", default_sessions);
-
     let current_session = use_signal(|| None);
-
     let operators = use_signal(|| operators);
     let sessions = use_signal(|| sessions);
-
     let need_to_scroll_down = use_signal(|| false);
-
-    let messages = use_signal(|| None);
-
     let dialogs = use_signal(fnv::FnvHashMap::default);
+    let messages = use_signal(|| None);
+    let input_area_mode = use_signal(|| InputAreaMode::Normal);
+
     use_context_provider(|| BakerState {
         operators,
         sessions,
@@ -162,6 +171,7 @@ fn provide_baker_state() {
         need_to_scroll_down,
         dialogs,
         messages,
+        input_area_mode,
     });
 }
 

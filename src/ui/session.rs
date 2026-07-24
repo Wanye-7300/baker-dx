@@ -118,7 +118,6 @@ fn SessionMainContent() -> Element {
                     messages,
                     on_delete_message: move |(session_uuid, message_id)| {
                         spawn(async move {
-                            info!("session_uuid {session_uuid}, message_id {message_id}");
                             crate::database::delete_message(session_uuid, message_id).await.unwrap();
                         });
                     },
@@ -159,8 +158,6 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
 
         let insert_id = sessions.read().get(&current_session).unwrap().id;
 
-        sessions.write().get_mut(&current_session).unwrap().id += 1;
-
         let message = crate::Message {
             sender: sender_uuid,
             content: crate::MessageType::Text(value()),
@@ -173,14 +170,52 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
             message: message.clone(),
         };
 
+        let mode = *baker_state.input_area_mode.read();
+
         spawn(async move {
-            crate::database::put_messages(vec![message_wrapper]).await.unwrap();
+            match mode {
+                crate::InputAreaMode::Normal => {
+                    sessions.write().get_mut(&current_session).unwrap().id += 1;
+                    crate::database::put_messages(vec![message_wrapper]).await.unwrap();
+                }
+                crate::InputAreaMode::Insert { id } => {
+                    let mut message_wrapper = message_wrapper;
+                    message_wrapper.message_id = id;
+                    let need_to_update = crate::database::insert_message(message_wrapper).await.unwrap();
+
+                    let mut sessions = baker_state.sessions;
+                    if need_to_update {
+                        sessions.write().get_mut(&current_session).unwrap().id += 1;
+                    }
+                }
+            }
         });
 
         let mut messages = baker_state.messages.write();
-        messages.as_mut().unwrap().insert(insert_id, message);
-        value.set(String::new());
+        let messages = messages.as_mut().unwrap();
 
+        for (_, v) in messages.iter_mut().rev() {
+            // TODO: 优化
+            v.animation = false;
+        }
+
+        match mode {
+            crate::InputAreaMode::Normal => {
+                messages.insert(insert_id, message);
+            }
+            crate::InputAreaMode::Insert { id } => {
+                if messages.contains_key(&id) {
+                    let others = messages.split_off(&id);
+                    messages.insert(id, message);
+                    for (k, v) in others {
+                        messages.insert(k + 1, v);
+                    }
+                }
+                baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
+            }
+        }
+
+        value.set(String::new());
         *baker_state.need_to_scroll_down.write() = true;
     };
 
@@ -257,6 +292,18 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
                     on_close: move |_| {
                         with_sender_selector_open.set(false);
                     },
+                }
+            }
+
+            if let crate::InputAreaMode::Insert { .. } = *baker_state.input_area_mode.read() {
+                div { id: "insert-mode-wrapper",
+                    span { "插入模式" }
+                    button {
+                        onclick: move |_| {
+                            baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
+                        },
+                        "×"
+                    }
                 }
             }
         }
@@ -371,11 +418,11 @@ fn MessageBubble(
     message: (u64, crate::MessageType, bool),
     on_delete_message: EventHandler<(Uuid, u64)>,
 ) -> Element {
+    let mut baker_state = use_context::<crate::BakerState>();
+
     let message_id = message.0;
 
     let delete_messages = move |_| {
-        let mut baker_state = use_context::<crate::BakerState>();
-
         let session_uuid = baker_state.current_session.unwrap();
         let message_id = message_id;
 
@@ -385,12 +432,18 @@ fn MessageBubble(
         messages.unwrap().remove(&message_id);
     };
 
+    let on_prepare_to_insert = move |_| {
+        baker_state
+            .input_area_mode
+            .set(crate::InputAreaMode::Insert { id: message.0 });
+    };
+
     // TODO: 添加 修改 和 插入消息的功能
     let message_actions_left = rsx! {
         span { class: "actions actions-left",
             span { onclick: delete_messages, "删除" }
             span { "修改" }
-            span { "在此前插入消息" }
+            span { onclick: on_prepare_to_insert, "在此前插入消息" }
         }
     };
 
@@ -398,7 +451,7 @@ fn MessageBubble(
         span { class: "actions",
             span { onclick: delete_messages, "删除" }
             span { "修改" }
-            span { "在此前插入消息" }
+            span { onclick: on_prepare_to_insert, "在此前插入消息" }
         }
     };
 

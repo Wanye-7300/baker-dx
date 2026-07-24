@@ -74,6 +74,73 @@ pub(crate) async fn put_messages(messages: Vec<MessageWrapper>) -> indexed_db_fu
     Ok(())
 }
 
+///
+/// 插入一条消息
+///
+/// - 如果对应的 `message_id` 不存在消息，则直接在其上放消息
+///
+/// - 否则，给 `message_id` **及**之后的所有消息的 `id` + 1，然后再插入
+///
+/// ## 返回值
+///
+/// 如果需要把 `id` + 1，则返回 `true`
+pub(crate) async fn insert_message(message: MessageWrapper) -> indexed_db_futures::Result<bool> {
+    let db = {
+        let db = DB.read();
+        db.as_ref().cloned().expect("Database not initialized")
+    };
+
+    let transaction = db
+        .transaction("messages")
+        .with_mode(TransactionMode::Readwrite)
+        .build()?;
+
+    let obj_store = transaction.object_store("messages")?;
+
+    let key_range = KeyRange::Only((message.session_uuid, message.message_id));
+
+    let (need_to_update_index, messages) =
+        if let Some(MessageWrapper { .. }) = obj_store.get(key_range).serde()?.await? {
+            // 否则，给 `message_id` **及**之后的所有消息的 `id` + 1，然后再插入
+            let key_range = KeyRange::Bound(
+                (message.session_uuid, message.message_id),
+                false,
+                (message.session_uuid, MAX_SAFE_INTEGER),
+                false,
+            );
+
+            if let Some(cursor) = obj_store.open_cursor().with_query(key_range).serde()?.await? {
+                let stream = cursor.stream_ser::<MessageWrapper>();
+                let mut messages = stream.map(|x| x.unwrap()).collect::<Vec<MessageWrapper>>().await;
+
+                let key_range = KeyRange::Bound(
+                    (message.session_uuid, message.message_id),
+                    false,
+                    (message.session_uuid, MAX_SAFE_INTEGER),
+                    false,
+                );
+
+                obj_store.delete(key_range).serde()?.await?;
+
+                messages.iter_mut().map(|x| x.message_id += 1).count();
+                (true, messages)
+            } else {
+                (false, vec![])
+            }
+        } else {
+            // 如果对应的 `message_id` 不存在消息，则直接在其上放消息
+            (false, vec![message])
+        };
+
+    for message in messages {
+        obj_store.put(message).serde()?.await?;
+    }
+
+    transaction.commit().await?;
+
+    Ok(need_to_update_index)
+}
+
 pub(crate) async fn get_messages(
     session_uuid: Uuid,
 ) -> indexed_db_futures::Result<collections::BTreeMap<u64, crate::Message>> {

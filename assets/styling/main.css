@@ -613,3 +613,45 @@ button {
   text-decoration: underline;
   color: oklch(69.346% 0.1654 252.626);
 }
+
+/* Insert Mode */
+
+#insert-mode-wrapper {
+  position: absolute;
+  bottom: calc(var(--input-area-height) - 10px);
+  /* background-color: #19cffd; */
+  --repeat-width: 4px;
+  background: #19cffd;
+  padding: 4px 12px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  border-radius: 2px;
+  font-size: 0.9em;
+  animation: insert-mode-wrapper-popup 0.15s ease-out forwards;
+  width: 150px;
+}
+
+#insert-mode-wrapper > span {
+  color: black;
+  font-weight: 500;
+}
+
+#insert-mode-wrapper > button {
+  display: inline-block;
+  background-color: transparent;
+  color: black;
+  font-weight: 500;
+  transition: background-color ease-out 0.1s;
+}
+
+#insert-mode-wrapper > button:hover {
+  background-color: #ffffff60;
+}
+
+@keyframes insert-mode-wrapper-popup {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
