@@ -3,13 +3,104 @@ use uuid::Uuid;
 
 pub(crate) mod selector;
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+enum InputAreaMessageType {
+    #[default]
+    Text,
+    Image(Uuid),
+}
+
 #[component]
 pub(super) fn SessionUI() -> Element {
-    let baker_state = use_context::<crate::BakerState>();
+    let mut baker_state = use_context::<crate::BakerState>();
     let sessions = baker_state.sessions;
     let current_session = baker_state.current_session;
 
+    let with_sender_selector_open = use_signal(|| false);
     let with_more_menu_open = use_signal(|| false);
+
+    let input_area_message_type = use_signal(InputAreaMessageType::default);
+    let mut input_area_text = use_signal(String::new);
+
+    // FIXME: 发送图片模式下插入会有问题
+    let submit = move |sender_uuid: Option<Uuid>| {
+        let mut sessions = baker_state.sessions;
+        let current_session = baker_state.current_session.unwrap();
+
+        let insert_id = sessions.read().get(&current_session).unwrap().id;
+
+        let message = crate::Message {
+            sender: sender_uuid,
+            content: match input_area_message_type() {
+                InputAreaMessageType::Text => crate::MessageType::Text(input_area_text()),
+                InputAreaMessageType::Image(uuid) => crate::MessageType::Image(uuid),
+            },
+            animation: true,
+        };
+
+        let message_wrapper = crate::database::MessageWrapper {
+            session_uuid: current_session,
+            message_id: insert_id,
+            message: message.clone(),
+        };
+
+        let mode = *baker_state.input_area_mode.read();
+
+        spawn(async move {
+            match mode {
+                crate::InputAreaMode::Normal => {
+                    sessions.write().get_mut(&current_session).unwrap().id += 1;
+                    crate::database::put_messages(vec![message_wrapper]).await.unwrap();
+                }
+                crate::InputAreaMode::Insert { id } => {
+                    let mut message_wrapper = message_wrapper;
+                    message_wrapper.message_id = id;
+                    let need_to_update = crate::database::insert_message(message_wrapper).await.unwrap();
+
+                    let mut sessions = baker_state.sessions;
+                    if need_to_update {
+                        sessions.write().get_mut(&current_session).unwrap().id += 1;
+                    }
+                }
+                crate::InputAreaMode::Modify { id } => {
+                    let mut message_wrapper = message_wrapper;
+                    message_wrapper.message_id = id;
+                    crate::database::modify_message(message_wrapper).await.unwrap();
+                }
+            }
+        });
+
+        let mut messages = baker_state.messages.write();
+        let messages = messages.as_mut().unwrap();
+
+        for (_, v) in messages.iter_mut().rev() {
+            // TODO: 优化
+            v.animation = false;
+        }
+
+        match mode {
+            crate::InputAreaMode::Normal => {
+                messages.insert(insert_id, message);
+            }
+            crate::InputAreaMode::Insert { id } => {
+                if messages.contains_key(&id) {
+                    let others = messages.split_off(&id);
+                    messages.insert(id, message);
+                    for (k, v) in others {
+                        messages.insert(k + 1, v);
+                    }
+                }
+                baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
+            }
+            crate::InputAreaMode::Modify { id } => {
+                messages.insert(id, message);
+                baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
+            }
+        }
+
+        input_area_text.set(String::new());
+        *baker_state.need_to_scroll_down.write() = true;
+    };
 
     if current_session.read().is_some() {
         // TODO: 虽然 current_session.read().unwrap() 正常情况下是保证正确的 —— 但是谁知道呢？SessionMainContent 与
@@ -24,9 +115,19 @@ pub(super) fn SessionUI() -> Element {
                 }
                 div { id: "session-main", class: "flex flex-column",
                     SessionMainContent {}
-                    InputArea { with_more_menu_open }
+                    InputArea {
+                        input_area_text,
+                        with_more_menu_open,
+                        with_sender_selector_open,
+                        on_submit: submit,
+                    }
                     if with_more_menu_open() {
-                        MoreMenu { current_session }
+                        MoreMenu {
+                            current_session,
+                            with_sender_selector_open,
+                            input_area_message_type,
+                            on_submit: submit,
+                        }
                     }
                 }
             }
@@ -128,7 +229,12 @@ fn SessionMainContent() -> Element {
 }
 
 #[component]
-fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
+fn InputArea(
+    input_area_text: Signal<String>,
+    with_more_menu_open: Signal<bool>,
+    with_sender_selector_open: Signal<bool>,
+    on_submit: EventHandler<Option<Uuid>>,
+) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
     let participants_ids_count = baker_state
         .sessions
@@ -144,96 +250,12 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
         .first()
         .unwrap();
 
-    let mut value = use_signal(String::new);
-
-    let mut with_sender_selector_open = use_signal(|| false);
-
-    let mut submit = move |sender_uuid: Option<Uuid>| {
-        if value.is_empty() {
-            return;
-        }
-
-        let mut sessions = baker_state.sessions;
-        let current_session = baker_state.current_session.unwrap();
-
-        let insert_id = sessions.read().get(&current_session).unwrap().id;
-
-        let message = crate::Message {
-            sender: sender_uuid,
-            content: crate::MessageType::Text(value()),
-            animation: true,
-        };
-
-        let message_wrapper = crate::database::MessageWrapper {
-            session_uuid: current_session,
-            message_id: insert_id,
-            message: message.clone(),
-        };
-
-        let mode = *baker_state.input_area_mode.read();
-
-        spawn(async move {
-            match mode {
-                crate::InputAreaMode::Normal => {
-                    sessions.write().get_mut(&current_session).unwrap().id += 1;
-                    crate::database::put_messages(vec![message_wrapper]).await.unwrap();
-                }
-                crate::InputAreaMode::Insert { id } => {
-                    let mut message_wrapper = message_wrapper;
-                    message_wrapper.message_id = id;
-                    let need_to_update = crate::database::insert_message(message_wrapper).await.unwrap();
-
-                    let mut sessions = baker_state.sessions;
-                    if need_to_update {
-                        sessions.write().get_mut(&current_session).unwrap().id += 1;
-                    }
-                }
-                crate::InputAreaMode::Modify { id } => {
-                    let mut message_wrapper = message_wrapper;
-                    message_wrapper.message_id = id;
-                    crate::database::modify_message(message_wrapper).await.unwrap();
-                }
-            }
-        });
-
-        let mut messages = baker_state.messages.write();
-        let messages = messages.as_mut().unwrap();
-
-        for (_, v) in messages.iter_mut().rev() {
-            // TODO: 优化
-            v.animation = false;
-        }
-
-        match mode {
-            crate::InputAreaMode::Normal => {
-                messages.insert(insert_id, message);
-            }
-            crate::InputAreaMode::Insert { id } => {
-                if messages.contains_key(&id) {
-                    let others = messages.split_off(&id);
-                    messages.insert(id, message);
-                    for (k, v) in others {
-                        messages.insert(k + 1, v);
-                    }
-                }
-                baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
-            }
-            crate::InputAreaMode::Modify { id } => {
-                messages.insert(id, message);
-                baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
-            }
-        }
-
-        value.set(String::new());
-        *baker_state.need_to_scroll_down.write() = true;
-    };
-
     let on_submit_click = move |evt: Event<MouseData>| match evt.modifiers().ctrl() {
         true => match participants_ids_count {
-            1 => submit(Some(first_participant)),
+            1 => on_submit.call(Some(first_participant)),
             _ => with_sender_selector_open.set(true),
         },
-        false => submit(None),
+        false => on_submit.call(None),
     };
 
     let input_area_style = if with_more_menu_open() {
@@ -252,22 +274,22 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
             div { id: "input-area-input",
                 input {
                     id: "input-area-input-input",
-                    oninput: move |evt| { value.set(evt.value()) },
+                    oninput: move |evt| { input_area_text.set(evt.value()) },
                     onkeypress: move |evt: Event<KeyboardData>| {
                         if evt.code() == Code::Enter {
                             match evt.modifiers().ctrl() {
                                 true => {
                                     match participants_ids_count {
-                                        1 => submit(Some(first_participant)),
+                                        1 => on_submit.call(Some(first_participant)),
                                         _ => with_sender_selector_open.set(true),
                                     }
                                 }
-                                false => submit(None),
+                                false => on_submit.call(None),
                             }
                         }
                     },
                     r#type: "text",
-                    value,
+                    value: input_area_text,
                 }
             }
             button { id: "input-area-submit", onclick: on_submit_click }
@@ -296,7 +318,7 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
                         .collect(),
                     title: "选择发送者",
                     func: move |uuid| {
-                        submit(Some(uuid));
+                        on_submit.call(Some(uuid));
                         with_sender_selector_open.set(false);
                     },
                     on_close: move |_| {
@@ -331,7 +353,12 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
 }
 
 #[component]
-fn MoreMenu(current_session: Signal<Option<Uuid>>) -> Element {
+fn MoreMenu(
+    current_session: Signal<Option<Uuid>>,
+    with_sender_selector_open: Signal<bool>,
+    input_area_message_type: Signal<InputAreaMessageType>,
+    on_submit: EventHandler<Option<Uuid>>,
+) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
     let session_id = current_session.unwrap();
     let session_name = baker_state.sessions.get(&session_id).unwrap().session_name.clone();
@@ -351,9 +378,10 @@ fn MoreMenu(current_session: Signal<Option<Uuid>>) -> Element {
             let file = file_data.get_web_file().unwrap();
 
             spawn(async move {
-                crate::database::save_multimedia(Uuid::new_v4(), file.into())
-                    .await
-                    .unwrap();
+                let uuid = Uuid::new_v4();
+                crate::database::save_multimedia(uuid, file.into()).await.unwrap();
+                input_area_message_type.set(InputAreaMessageType::Image(uuid));
+                on_submit.call(None);
             });
         }
     };
@@ -519,6 +547,27 @@ fn MessageBubble(
         }
     };
 
+    let mut img_uuid = use_signal(|| None);
+    let mut img_src = use_signal(String::new);
+
+    use_effect(move || {
+        img_uuid.read();
+
+        spawn(async move {
+            if img_uuid.read().is_none() {
+                return;
+            }
+
+            let blob = crate::database::get_multimedia(img_uuid.unwrap())
+                .await
+                .unwrap()
+                .unwrap();
+            let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
+
+            img_src.set(url);
+        });
+    });
+
     rsx! {
         div { class: "message-bubble-wrapper",
             if !avatar_on_left {
@@ -528,7 +577,11 @@ fn MessageBubble(
                 crate::MessageType::Text(text) => rsx! {
                     span { class: bubble_class, {text} }
                 },
-                crate::MessageType::Image(_uuid) => rsx! {},
+                crate::MessageType::Image(uuid) => rsx! {
+                    span { class: "{bubble_class} message-bubble-image",
+                        img { onmounted: move |_| img_uuid.set(Some(uuid)), src: {img_src} }
+                    }
+                },
             }
 
             if avatar_on_left {

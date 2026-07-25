@@ -25,7 +25,6 @@ struct Operator {
 enum MessageType {
     Text(String),
 
-    /// TODO: 犹待使用
     Image(Uuid),
 }
 

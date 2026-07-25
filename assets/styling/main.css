@@ -417,12 +417,19 @@ button {
   position: relative;
 }
 
+.message-bubble-wrapper:has(.message-bubble-image) {
+  min-width: 150px;
+  max-width: 40%;
+}
+
 .message-bubble-wrapper > span {
   border-image-repeat: repeat;
   border-style: solid;
   border-color: transparent;
   font-size: 1.1em;
   display: inline-block;
+  color: black;
+  user-select: text;
 }
 
 .actions {
@@ -472,7 +479,6 @@ button {
   border-image-slice: 20 20 18 30 fill;
   border-image-width: 20px 20px 18px 30px;
   padding: 12px 10px 12px 20px;
-  user-select: all;
 }
 
 .message-bubble-self {
@@ -480,8 +486,6 @@ button {
   border-image-slice: 20 30 18 20 fill;
   border-image-width: 20px 30px 18px 20px;
   padding: 12px 20px 12px 10px;
-  color: black;
-  user-select: text;
 }
 
 .message-bubble-animate-left {
@@ -492,6 +496,19 @@ button {
 .message-bubble-animate-right {
   animation: bubble-slide-in-right 0.1s cubic-bezier(1, 0, 1, 0.8);
   transform-origin: right center;
+}
+
+.message-bubble-image {
+  border-image-source: none;
+  border-image-slice: 0;
+  border-image-width: 0;
+  padding: 0px;
+}
+
+.message-bubble-image img {
+  width: 100%;
+  object-fit: contain;
+  border-radius: 5px;
 }
 
 @keyframes bubble-slide-in-left {
