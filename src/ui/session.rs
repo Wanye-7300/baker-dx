@@ -1,4 +1,4 @@
-use dioxus::prelude::*;
+use dioxus::{prelude::*, web::WebFileExt};
 use uuid::Uuid;
 
 pub(crate) mod selector;
@@ -346,6 +346,18 @@ fn MoreMenu(current_session: Signal<Option<Uuid>>) -> Element {
             .collect()
     });
 
+    let onchange = move |evt: Event<FormData>| {
+        if let Some(file_data) = evt.files().first() {
+            let file = file_data.get_web_file().unwrap();
+
+            spawn(async move {
+                crate::database::save_multimedia(Uuid::new_v4(), file.into())
+                    .await
+                    .unwrap();
+            });
+        }
+    };
+
     let mut animation_end = use_signal(|| false);
 
     rsx! {
@@ -356,6 +368,16 @@ fn MoreMenu(current_session: Signal<Option<Uuid>>) -> Element {
             },
             if animation_end() {
                 div { id: "more-menu", class: "menu",
+                    label { class: "more-menu-upload-button",
+                        "发送图片"
+                        input {
+                            r#type: "file",
+                            accept: "image/*",
+                            hidden: true,
+                            onchange,
+                        }
+                    }
+                    hr {}
                     h3 { "会话设置" }
                     label { "会话名" }
                     input {

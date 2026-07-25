@@ -8,6 +8,8 @@ use indexed_db_futures::transaction::TransactionMode;
 use indexed_db_futures::{database::Database, KeyRange};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use web_sys::js_sys::{Object, Reflect};
+use web_sys::wasm_bindgen::{JsCast, JsValue};
 
 const MAX_SAFE_INTEGER: u64 = 9007199254740991;
 
@@ -35,6 +37,10 @@ pub(crate) async fn open_db() -> indexed_db_futures::Result<()> {
                         .with_key_path(indexed_db_futures::KeyPath::Sequence(
                             vec!["session_uuid", "message_id"].into(),
                         ))
+                        .build()?;
+
+                    db.create_object_store("multimedia")
+                        .with_key_path(indexed_db_futures::KeyPath::One("uuid"))
                         .build()?;
                 }
                 _ => {
@@ -208,4 +214,48 @@ pub(crate) async fn delete_message(session_uuid: Uuid, message_id: u64) -> index
     transaction.commit().await?;
 
     Ok(())
+}
+
+pub(crate) async fn save_multimedia(uuid: Uuid, blob: web_sys::Blob) -> indexed_db_futures::Result<()> {
+    let db = {
+        let db = DB.read();
+        db.as_ref().cloned().expect("Database not initialized")
+    };
+
+    let transaction = db
+        .transaction("multimedia")
+        .with_mode(TransactionMode::Readwrite)
+        .build()?;
+
+    let obj_store = transaction.object_store("multimedia")?;
+
+    let obj = Object::new();
+    Reflect::set(&obj, &JsValue::from_str("uuid"), &JsValue::from_str(&uuid.to_string()))?;
+    Reflect::set(&obj, &JsValue::from_str("blob"), &blob.into())?;
+
+    obj_store.put(obj).build()?.await?;
+    transaction.commit().await?;
+
+    Ok(())
+}
+
+#[allow(unused)]
+pub(crate) async fn get_multimedia(uuid: Uuid) -> indexed_db_futures::Result<Option<web_sys::Blob>> {
+    let db = {
+        let db = DB.read();
+        db.as_ref().cloned().expect("Database not initialized")
+    };
+
+    let transaction = db
+        .transaction("multimedia")
+        .with_mode(TransactionMode::Readonly)
+        .build()?;
+
+    let obj_store = transaction.object_store("multimedia")?;
+
+    let val: Option<JsValue> = obj_store.get(&JsValue::from_str(&uuid.to_string())).build()?.await?;
+
+    Ok(val
+        .and_then(|x| Reflect::get(&x, &JsValue::from_str("blob")).ok())
+        .and_then(|x| x.dyn_into::<web_sys::Blob>().ok()))
 }

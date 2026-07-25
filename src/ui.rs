@@ -1,5 +1,3 @@
-use std::collections;
-
 use dioxus::prelude::*;
 use uuid::Uuid;
 
@@ -148,7 +146,6 @@ pub(crate) fn DialogNewSession(
                                 .iter()
                                 .cloned()
                                 .collect::<Vec<Uuid>>(),
-                            messages: collections::BTreeMap::new(),
                             id: 0,
                         },
                     );

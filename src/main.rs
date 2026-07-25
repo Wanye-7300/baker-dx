@@ -44,21 +44,8 @@ struct Session {
     session_name: String,
     avatar: String,
     participants_ids: Vec<Uuid>,
-    messages: collections::BTreeMap<u64, Message>,
     // 下次 push 消息时应该插入的编号，然后 +1
     id: u64,
-}
-
-impl Session {
-    fn make_no_animation(&mut self) {
-        for v in self.messages.values_mut().rev() {
-            if !v.animation {
-                // 一般来说，只有最后几个 messages 是 true，自然遍历到 false 那么后面基本不可能有了，有了我给你了
-                break;
-            }
-            v.animation = false;
-        }
-    }
 }
 
 /// 决定输入框的行为。
@@ -151,7 +138,6 @@ fn provide_baker_state() {
                 session_name: "Perlica".to_owned(),
                 avatar: String::new(),
                 participants_ids: vec![perlica_uuid],
-                messages: collections::BTreeMap::new(),
                 id: 0u64,
             },
         );

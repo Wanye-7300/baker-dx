@@ -31,11 +31,6 @@ pub(super) fn Card(uuid: Uuid, name: String) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
 
     let on_choose_card = move |_| {
-        if let Some(uuid) = *baker_state.current_session.read() {
-            if let Some(session) = baker_state.sessions.write().get_mut(&uuid) {
-                session.make_no_animation();
-            }
-        }
         *baker_state.current_session.write() = Some(uuid);
         *baker_state.need_to_scroll_down.write() = true;
     };
