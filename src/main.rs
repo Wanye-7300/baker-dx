@@ -70,6 +70,9 @@ enum InputAreaMode {
 
     /// 插入模式：将在给定的 id 之前插入
     Insert { id: u64 },
+
+    /// 修改模式
+    Modify { id: u64 },
 }
 
 #[derive(Clone, Debug)]

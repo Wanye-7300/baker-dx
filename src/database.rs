@@ -141,6 +141,22 @@ pub(crate) async fn insert_message(message: MessageWrapper) -> indexed_db_future
     Ok(need_to_update_index)
 }
 
+pub(crate) async fn modify_message(message: MessageWrapper) -> indexed_db_futures::Result<()> {
+    let db = {
+        let db = DB.read();
+        db.as_ref().cloned().expect("Database not initialized")
+    };
+
+    let transaction = db
+        .transaction("messages")
+        .with_mode(TransactionMode::Readwrite)
+        .build()?;
+    let object_store = transaction.object_store("messages")?;
+    object_store.put(message).serde()?.await?;
+    transaction.commit().await?;
+    Ok(())
+}
+
 pub(crate) async fn get_messages(
     session_uuid: Uuid,
 ) -> indexed_db_futures::Result<collections::BTreeMap<u64, crate::Message>> {

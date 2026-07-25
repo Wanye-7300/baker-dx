@@ -188,6 +188,11 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
                         sessions.write().get_mut(&current_session).unwrap().id += 1;
                     }
                 }
+                crate::InputAreaMode::Modify { id } => {
+                    let mut message_wrapper = message_wrapper;
+                    message_wrapper.message_id = id;
+                    crate::database::modify_message(message_wrapper).await.unwrap();
+                }
             }
         });
 
@@ -211,6 +216,10 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
                         messages.insert(k + 1, v);
                     }
                 }
+                baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
+            }
+            crate::InputAreaMode::Modify { id } => {
+                messages.insert(id, message);
                 baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
             }
         }
@@ -299,6 +308,16 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
             if let crate::InputAreaMode::Insert { .. } = *baker_state.input_area_mode.read() {
                 div { id: "insert-mode-wrapper",
                     span { "插入模式" }
+                    button {
+                        onclick: move |_| {
+                            baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
+                        },
+                        "×"
+                    }
+                }
+            } else if let crate::InputAreaMode::Modify { .. } = *baker_state.input_area_mode.read() {
+                div { id: "insert-mode-wrapper", class: "modify-mode",
+                    span { "修改模式" }
                     button {
                         onclick: move |_| {
                             baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
@@ -431,6 +450,14 @@ fn MessageBubble(
 
         let messages = baker_state.messages.as_mut();
         messages.unwrap().remove(&message_id);
+
+        baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
+    };
+
+    let on_prepare_to_modify = move |_| {
+        baker_state
+            .input_area_mode
+            .set(crate::InputAreaMode::Modify { id: message.0 });
     };
 
     let on_prepare_to_insert = move |_| {
@@ -443,16 +470,16 @@ fn MessageBubble(
     let message_actions_left = rsx! {
         span { class: "actions actions-left",
             span { onclick: delete_messages, "删除" }
-            span { "修改" }
+            span { onclick: on_prepare_to_modify, "修改" }
             span { onclick: on_prepare_to_insert, "在此前插入消息" }
         }
     };
 
     let message_actions_right = rsx! {
         span { class: "actions",
-            span { onclick: delete_messages, "删除" }
-            span { "修改" }
+            span { onclick: on_prepare_to_modify, "修改" }
             span { onclick: on_prepare_to_insert, "在此前插入消息" }
+            span { onclick: delete_messages, "删除" }
         }
     };
 

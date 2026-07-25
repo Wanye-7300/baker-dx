@@ -672,6 +672,10 @@ button {
   width: 150px;
 }
 
+#insert-mode-wrapper.modify-mode {
+  background: #ffa500;
+}
+
 #insert-mode-wrapper > span {
   color: black;
   font-weight: 500;
