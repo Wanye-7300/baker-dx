@@ -262,9 +262,10 @@ fn InputArea(with_more_menu_open: Signal<bool>) -> Element {
                 }
             }
             button { id: "input-area-submit", onclick: on_submit_click }
-            button { id: "input-area-stickers" }
+            button { id: "input-area-stickers", class: "input-area-button" }
             button {
                 id: "input-area-more",
+                class: if with_more_menu_open() { "input-area-more-selected input-area-button" } else { "input-area-button" },
                 onclick: move |_| {
                     if with_more_menu_open() {
                         with_more_menu_open.set(false);

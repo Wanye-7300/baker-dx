@@ -229,6 +229,27 @@ button {
   );
 }
 
+.input-area-button {
+  position: relative;
+}
+
+.input-area-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: transparent;
+  border-radius: 100%;
+  transition: background-color 0.1s linear;
+}
+
+.input-area-button:hover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: #00000032;
+  border-radius: 100%;
+}
+
 #input-area-stickers {
   width: var(--button-width);
   border-radius: 100%;
@@ -239,7 +260,25 @@ button {
 #input-area-more {
   width: var(--button-width);
   border-radius: 100%;
-  background: #eeecec var(--input-area-more) no-repeat center center / 60%;
+  background-color: #eeecec;
+  /* background: #eeecec var(--input-area-more) no-repeat center center / 60%; */
+}
+
+#input-area-more.input-area-more-selected {
+  background-color: #404040;
+}
+
+#input-area-more::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: transparent var(--input-area-more) no-repeat center center / 60%;
+}
+
+#input-area-more.input-area-more-selected::before {
+  background: transparent var(--input-area-more-selected) no-repeat center
+    center / 60%;
+  transform: rotate(45deg);
 }
 
 #more-menu-wrapper {
@@ -614,7 +653,8 @@ button {
   color: oklch(69.346% 0.1654 252.626);
 }
 
-/* Insert Mode */
+/* Insert Mode
+   ================================================================================ */
 
 #insert-mode-wrapper {
   position: absolute;
