@@ -1,3 +1,5 @@
+use std::iter;
+
 use dioxus::{prelude::*, web::WebFileExt};
 use uuid::Uuid;
 
@@ -19,11 +21,15 @@ pub(super) fn SessionUI() -> Element {
     let with_sender_selector_open = use_signal(|| false);
     let with_more_menu_open = use_signal(|| false);
 
-    let input_area_message_type = use_signal(InputAreaMessageType::default);
+    let mut input_area_message_type = use_signal(InputAreaMessageType::default);
     let mut input_area_text = use_signal(String::new);
 
     // FIXME: 发送图片模式下插入会有问题
     let submit = move |sender_uuid: Option<Uuid>| {
+        if input_area_message_type() == InputAreaMessageType::Text && input_area_text.is_empty() {
+            return;
+        }
+
         let mut sessions = baker_state.sessions;
         let current_session = baker_state.current_session.unwrap();
 
@@ -89,16 +95,20 @@ pub(super) fn SessionUI() -> Element {
                     for (k, v) in others {
                         messages.insert(k + 1, v);
                     }
+                } else {
+                    messages.insert(id, message);
                 }
                 baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
             }
             crate::InputAreaMode::Modify { id } => {
+                messages.remove(&id);
                 messages.insert(id, message);
                 baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
             }
         }
 
         input_area_text.set(String::new());
+        input_area_message_type.set(InputAreaMessageType::Text);
         *baker_state.need_to_scroll_down.write() = true;
     };
 
@@ -124,6 +134,7 @@ pub(super) fn SessionUI() -> Element {
                     if with_more_menu_open() {
                         MoreMenu {
                             current_session,
+                            with_more_menu_open,
                             with_sender_selector_open,
                             input_area_message_type,
                             on_submit: submit,
@@ -314,11 +325,12 @@ fn InputArea(
                         .unwrap()
                         .participants_ids
                         .iter()
-                        .map(|x| (*x, baker_state.operators.get(x).unwrap().name.clone()))
+                        .map(|x| (Some(*x), baker_state.operators.get(x).unwrap().name.clone()))
+                        .chain(iter::once((None, "管理员".to_owned())))
                         .collect(),
                     title: "选择发送者",
                     func: move |uuid| {
-                        on_submit.call(Some(uuid));
+                        on_submit.call(uuid);
                         with_sender_selector_open.set(false);
                     },
                     on_close: move |_| {
@@ -355,6 +367,7 @@ fn InputArea(
 #[component]
 fn MoreMenu(
     current_session: Signal<Option<Uuid>>,
+    with_more_menu_open: Signal<bool>,
     with_sender_selector_open: Signal<bool>,
     input_area_message_type: Signal<InputAreaMessageType>,
     on_submit: EventHandler<Option<Uuid>>,
@@ -381,7 +394,9 @@ fn MoreMenu(
                 let uuid = Uuid::new_v4();
                 crate::database::save_multimedia(uuid, file.into()).await.unwrap();
                 input_area_message_type.set(InputAreaMessageType::Image(uuid));
-                on_submit.call(None);
+                // on_submit.call(None);
+                with_sender_selector_open.set(true);
+                with_more_menu_open.set(false);
             });
         }
     };

@@ -15,7 +15,7 @@ const MAX_SAFE_INTEGER: u64 = 9007199254740991;
 
 static DB: GlobalSignal<Option<Database>> = Signal::global(|| None);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct MessageWrapper {
     pub(crate) session_uuid: Uuid,
     pub(crate) message_id: u64,
@@ -116,9 +116,6 @@ pub(crate) async fn insert_message(message: MessageWrapper) -> indexed_db_future
             );
 
             if let Some(cursor) = obj_store.open_cursor().with_query(key_range).serde()?.await? {
-                let stream = cursor.stream_ser::<MessageWrapper>();
-                let mut messages = stream.map(|x| x.unwrap()).collect::<Vec<MessageWrapper>>().await;
-
                 let key_range = KeyRange::Bound(
                     (message.session_uuid, message.message_id),
                     false,
@@ -126,12 +123,16 @@ pub(crate) async fn insert_message(message: MessageWrapper) -> indexed_db_future
                     false,
                 );
 
+                let stream = cursor.stream_ser::<MessageWrapper>();
+                let mut messages = stream.map(|x| x.unwrap()).collect::<Vec<MessageWrapper>>().await;
+                messages.iter_mut().map(|x| x.message_id += 1).count();
+                messages.push(message);
+
                 obj_store.delete(key_range).serde()?.await?;
 
-                messages.iter_mut().map(|x| x.message_id += 1).count();
                 (true, messages)
             } else {
-                (false, vec![])
+                unreachable!()
             }
         } else {
             // 如果对应的 `message_id` 不存在消息，则直接在其上放消息

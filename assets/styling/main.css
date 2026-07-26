@@ -503,6 +503,7 @@ button {
   border-image-slice: 0;
   border-image-width: 0;
   padding: 0px;
+  width: 100%;
 }
 
 .message-bubble-image img {
