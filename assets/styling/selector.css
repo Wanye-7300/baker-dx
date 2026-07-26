@@ -7,7 +7,7 @@
   flex-direction: column;
   overflow-y: auto;
   max-height: 200px;
-  width: 200px;
+  width: 240px;
   animation: selector-popup 0.1s ease-in forwards;
   z-index: 328;
 }
@@ -33,4 +33,23 @@
 
 .selector > button:hover {
   background-color: #c2c2c2;
+}
+
+.optional_wrapper {
+  display: flex;
+  flex-direction: column;
+  margin: 0 10px;
+}
+
+.optional_wrapper > label {
+  color: black;
+  transition: background-color 0.05s ease-in;
+}
+
+.optional_wrapper > label:hover {
+  background-color: #c2c2c2;
+}
+
+.optional_wrapper > label > input {
+  margin-right: 10px;
 }

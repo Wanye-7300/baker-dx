@@ -10,6 +10,23 @@ enum InputAreaMessageType {
     #[default]
     Text,
     Image(Uuid),
+    HorizontalBreak,
+    State,
+    StateWithHorizontalLine,
+}
+
+impl TryFrom<&str> for InputAreaMessageType {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &str) -> std::prelude::v1::Result<Self, Self::Error> {
+        match value {
+            "a" => Ok(Self::Text),
+            "c" => Ok(Self::HorizontalBreak),
+            "d" => Ok(Self::State),
+            "e" => Ok(Self::StateWithHorizontalLine),
+            _ => Err(anyhow::anyhow!("Unknown Parameter")),
+        }
+    }
 }
 
 #[component]
@@ -18,13 +35,13 @@ pub(super) fn SessionUI() -> Element {
     let sessions = baker_state.sessions;
     let current_session = baker_state.current_session;
 
+    let with_sender_selector_message_type = use_signal(|| true);
     let with_sender_selector_open = use_signal(|| false);
     let with_more_menu_open = use_signal(|| false);
 
     let mut input_area_message_type = use_signal(InputAreaMessageType::default);
     let mut input_area_text = use_signal(String::new);
 
-    // FIXME: 发送图片模式下插入会有问题
     let submit = move |sender_uuid: Option<Uuid>| {
         if input_area_message_type() == InputAreaMessageType::Text && input_area_text.is_empty() {
             return;
@@ -40,6 +57,11 @@ pub(super) fn SessionUI() -> Element {
             content: match input_area_message_type() {
                 InputAreaMessageType::Text => crate::MessageType::Text(input_area_text()),
                 InputAreaMessageType::Image(uuid) => crate::MessageType::Image(uuid),
+                InputAreaMessageType::HorizontalBreak => crate::MessageType::HorizontalBreak,
+                InputAreaMessageType::State => crate::MessageType::State(input_area_text()),
+                InputAreaMessageType::StateWithHorizontalLine => {
+                    crate::MessageType::StateWithHorizontalLine(input_area_text())
+                }
             },
             animation: true,
         };
@@ -126,8 +148,10 @@ pub(super) fn SessionUI() -> Element {
                 div { id: "session-main", class: "flex flex-column",
                     SessionMainContent {}
                     InputArea {
+                        input_area_message_type,
                         input_area_text,
                         with_more_menu_open,
+                        with_sender_selector_message_type,
                         with_sender_selector_open,
                         on_submit: submit,
                     }
@@ -241,8 +265,10 @@ fn SessionMainContent() -> Element {
 
 #[component]
 fn InputArea(
+    input_area_message_type: Signal<InputAreaMessageType>,
     input_area_text: Signal<String>,
     with_more_menu_open: Signal<bool>,
+    with_sender_selector_message_type: Signal<bool>,
     with_sender_selector_open: Signal<bool>,
     on_submit: EventHandler<Option<Uuid>>,
 ) -> Element {
@@ -329,7 +355,22 @@ fn InputArea(
                         .chain(iter::once((None, "管理员".to_owned())))
                         .collect(),
                     title: "选择发送者",
-                    func: move |uuid| {
+                    optional_kv: vec![
+                        ("a".to_string(), "默认消息".to_string()),
+                        ("c".to_string(), "分隔线".to_string()),
+                        ("d".to_string(), "“状态”".to_string()),
+                        ("e".to_string(), "“状态”（带分隔符）".to_string()),
+                    ],
+                    optional_title: "消息类型",
+                    func: move |(message_type, uuid): (Option<String>, Option<Uuid>)| {
+                        if let Some(message_type) = message_type {
+                            let message_type: InputAreaMessageType = message_type
+                                .as_str()
+                                .try_into()
+                                .unwrap();
+
+                            input_area_message_type.set(message_type);
+                        }
                         on_submit.call(uuid);
                         with_sender_selector_open.set(false);
                     },
@@ -597,6 +638,9 @@ fn MessageBubble(
                         img { onmounted: move |_| img_uuid.set(Some(uuid)), src: {img_src} }
                     }
                 },
+                crate::MessageType::HorizontalBreak => todo!(),
+                crate::MessageType::State(_) => todo!(),
+                crate::MessageType::StateWithHorizontalLine(_) => todo!(),
             }
 
             if avatar_on_left {

@@ -22,16 +22,29 @@ struct Operator {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "t", content = "c")]
 enum MessageType {
+    #[serde(rename = "a")]
     Text(String),
 
+    #[serde(rename = "b")]
     Image(Uuid),
+
+    #[serde(rename = "c")]
+    HorizontalBreak,
+
+    #[serde(rename = "d")]
+    State(String),
+
+    #[serde(rename = "e")]
+    StateWithHorizontalLine(String),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 struct Message {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "s")]
     sender: Option<Uuid>,
+    #[serde(rename = "c")]
     content: MessageType,
     #[serde(skip_serializing)]
     #[serde(default)]
