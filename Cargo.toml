@@ -1,6 +1,6 @@
 [package]
 name = "baker-dx"
-version = "0.1.0"
+version = "2.0.0-alpha.1"
 authors = ["Chen Siyuan <chensiyuan-2009@outlook.com>"]
 edition = "2021"
 description = "《明日方舟：终末地》二创制作工具"
