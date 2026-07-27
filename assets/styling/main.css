@@ -181,6 +181,9 @@ button {
     transparent 98%
   );
   padding: 30px 0 40px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 #input-area {
@@ -428,7 +431,6 @@ button {
   border-color: transparent;
   font-size: 1.1em;
   display: inline-block;
-  color: black;
   user-select: text;
 }
 
@@ -448,20 +450,42 @@ button {
 }
 
 .message-bubble-wrapper:hover > .actions,
-.actions:hover {
+.actions:hover,
+.horizontal-break:hover > .special-actions,
+.special-actions:hover,
+.state:hover > .special-actions,
+.special-actions:hover,
+.state-with-hl:hover > .special-actions,
+.special-actions:hover {
   visibility: visible;
   animation: actions-show 0.1s linear forwards;
 }
 
-.actions > span {
+.actions > span,
+.special-actions > span {
   margin: 0 5px 0 5px;
   font-size: 0.95rem;
   cursor: pointer;
 }
 
-.actions > span:hover {
+.actions > span:hover,
+.special-actions > span:hover {
   text-decoration: underline;
   color: oklch(80.9% 0.105 251.813);
+}
+
+.special-actions {
+  position: absolute;
+  background-color: transparent !important;
+  color: white;
+  opacity: 0;
+  font-size: 0.8em;
+  top: 6px;
+}
+
+.state .special-actions {
+  top: 20px;
+  left: 50%;
 }
 
 @keyframes actions-show {
@@ -474,11 +498,15 @@ button {
   }
 }
 
+/* Message Bubble
+   ================================================================================ */
+
 .message-bubble-others {
   border-image-source: var(--message-bubble-others);
   border-image-slice: 20 20 18 30 fill;
   border-image-width: 20px 20px 18px 30px;
   padding: 12px 10px 12px 20px;
+  color: white;
 }
 
 .message-bubble-self {
@@ -486,6 +514,7 @@ button {
   border-image-slice: 20 30 18 20 fill;
   border-image-width: 20px 30px 18px 20px;
   padding: 12px 20px 12px 10px;
+  color: black;
 }
 
 .message-bubble-animate-left {
@@ -512,6 +541,63 @@ button {
   border-radius: 5px;
 }
 
+.horizontal-break,
+.state,
+.state-with-hl {
+  position: relative;
+}
+
+.horizontal-break {
+  flex: 0 0 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 3%;
+}
+
+.horizontal-break > span {
+  flex: 1;
+  width: 100%;
+  background-color: #a9a8a6;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.state > span {
+  flex: 1;
+  color: #7f807f;
+  font-size: 1.1em;
+}
+
+.state-with-hl {
+  display: flex;
+  margin: 0 3%;
+  align-items: center;
+  gap: 15px;
+}
+
+.state-with-hl > span:first-child {
+  background-color: #92908e;
+  height: 3px;
+  flex: 1;
+}
+
+.state-with-hl > span:nth-child(2) {
+  color: #929190;
+  font-size: 1.1em;
+}
+
+.state-with-hl > span:nth-child(3) {
+  background-color: #92908e;
+  height: 3px;
+  flex: 1;
+}
+
 @keyframes bubble-slide-in-left {
   from {
     transform: scaleX(0);
@@ -535,6 +621,9 @@ button {
     color: #000000ff;
   }
 }
+
+/* Dialog
+   ================================================================================ */
 
 .backdrop {
   position: fixed;

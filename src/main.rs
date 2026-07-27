@@ -40,10 +40,43 @@ enum MessageType {
     StateWithHorizontalLine(String),
 }
 
+impl MessageType {
+    fn is_text_or_image(&self) -> bool {
+        matches!(self, MessageType::Text(_)) || matches!(self, MessageType::Image(_))
+    }
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Debug, Default)]
+#[serde(tag = "st", content = "sc")]
+enum Sender {
+    #[default]
+    #[serde(rename = "end")]
+    Endministrator,
+
+    #[serde(rename = "o")]
+    Others(Uuid),
+
+    /// 分隔符等
+    #[serde(rename = "n")]
+    None,
+}
+
+impl Sender {
+    fn from_optional_uuid(uuid: Option<Uuid>) -> Self {
+        match uuid {
+            Some(uuid) => Self::Others(uuid),
+            None => Self::Endministrator,
+        }
+    }
+
+    fn avatar_should_on_left(&self) -> bool {
+        matches!(self, Self::Others(_))
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 struct Message {
-    #[serde(skip_serializing_if = "Option::is_none", rename = "s")]
-    sender: Option<Uuid>,
+    sender: Sender,
     #[serde(rename = "c")]
     content: MessageType,
     #[serde(skip_serializing)]

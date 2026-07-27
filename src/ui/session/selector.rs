@@ -5,13 +5,12 @@ use uuid::Uuid;
 pub(crate) fn Selector(
     kv: Vec<(Option<Uuid>, String)>,
     title: Option<&'static str>,
-    optional_kv: Option<Vec<(String, String)>>,
-    optional_title: Option<String>,
+    message_type_selector: Option<bool>,
     additional_class: Option<&'static str>,
-    func: EventHandler<(Option<String>, Option<Uuid>)>,
+    func: EventHandler<(Option<super::InputAreaMessageType>, crate::Sender)>,
     on_close: EventHandler,
 ) -> Element {
-    let mut selected = use_signal(|| optional_kv.as_ref().and_then(|x| x.first().map(|x| x.0.to_string())));
+    let message_type_selector = message_type_selector.unwrap_or_default();
 
     let selector_class = match additional_class {
         Some(add) => format!("selector {}", add),
@@ -34,24 +33,21 @@ pub(crate) fn Selector(
 
     rsx! {
         div { class: selector_class,
-            if let Some(title) = optional_title {
-                h3 { {title.to_string()} }
-            }
-            if let Some(optional_kv) = optional_kv {
-                div { class: "optional_wrapper",
-                    for (k , v) in optional_kv {
-                        label { key: "{k.to_string()}",
-                            input {
-                                r#type: "radio",
-                                name: "optional",
-                                value: k.to_string(),
-                                checked: selected() == Some(k.to_owned()),
-                                onchange: move |_| {
-                                    selected.set(Some(k.to_owned()));
-                                },
-                            }
-                            {v}
-                        }
+            if message_type_selector {
+                h3 { "发送为……" }
+                for (k , v) in vec![
+                    (super::InputAreaMessageType::HorizontalBreak, "分隔线".to_string()),
+                    (super::InputAreaMessageType::State, "“状态”".to_string()),
+                    (
+                        super::InputAreaMessageType::StateWithHorizontalLine,
+                        "“状态”（带分隔符）".to_string(),
+                    ),
+                ]
+                {
+                    button {
+                        key: "{k:?}",
+                        onclick: move |_| func.call((Some(k), crate::Sender::None)),
+                        {v.to_string()}
                     }
                 }
             }
@@ -61,7 +57,7 @@ pub(crate) fn Selector(
             for (k , uuid , v) in kv {
                 button {
                     key: "{k}",
-                    onclick: move |_| func.call((selected(), uuid)),
+                    onclick: move |_| func.call((None, crate::Sender::from_optional_uuid(uuid))),
                     {v.to_string()}
                 }
             }

@@ -1,7 +1,9 @@
 use std::iter;
 
-use dioxus::{prelude::*, web::WebFileExt};
+use dioxus::{html::script::text, prelude::*, web::WebFileExt};
 use uuid::Uuid;
+
+use crate::Sender;
 
 pub(crate) mod selector;
 
@@ -30,6 +32,30 @@ impl TryFrom<&str> for InputAreaMessageType {
 }
 
 #[component]
+pub(crate) fn Image(
+    uuid: Uuid,
+    #[props(extends = GlobalAttributes, extends = img)] attributes: Vec<Attribute>,
+) -> Element {
+    let mut img_src = use_signal(String::new);
+    let img_uuid = use_signal(|| uuid);
+
+    use_effect(move || {
+        img_uuid.read();
+
+        spawn(async move {
+            let blob = crate::database::get_multimedia(img_uuid()).await.unwrap().unwrap();
+            let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
+
+            img_src.set(url);
+        });
+    });
+
+    rsx! {
+        img { src: img_src, ..attributes }
+    }
+}
+
+#[component]
 pub(super) fn SessionUI() -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
     let sessions = baker_state.sessions;
@@ -42,7 +68,7 @@ pub(super) fn SessionUI() -> Element {
     let mut input_area_message_type = use_signal(InputAreaMessageType::default);
     let mut input_area_text = use_signal(String::new);
 
-    let submit = move |sender_uuid: Option<Uuid>| {
+    let submit = move |sender: Sender| {
         if input_area_message_type() == InputAreaMessageType::Text && input_area_text.is_empty() {
             return;
         }
@@ -53,7 +79,7 @@ pub(super) fn SessionUI() -> Element {
         let insert_id = sessions.read().get(&current_session).unwrap().id;
 
         let message = crate::Message {
-            sender: sender_uuid,
+            sender,
             content: match input_area_message_type() {
                 InputAreaMessageType::Text => crate::MessageType::Text(input_area_text()),
                 InputAreaMessageType::Image(uuid) => crate::MessageType::Image(uuid),
@@ -210,11 +236,11 @@ fn SessionMainContent() -> Element {
         let mut iter = m.iter().peekable();
 
         let mut temporary = vec![]; // 用于判断一组消息是不是一个人发的，然后塞进 messages
-        let mut sender_uuid_now = iter.peek().and_then(|x| x.1.sender);
+        let mut sender_now = iter.peek().map(|x| x.1.sender);
 
         loop {
             let peek = iter.peek();
-            if peek.is_some_and(|x| x.1.sender == sender_uuid_now) {
+            if peek.is_some_and(|x| Some(x.1.sender) == sender_now && x.1.content.is_text_or_image()) {
                 temporary.push((
                     *peek.unwrap().0,
                     peek.unwrap().1.content.clone(),
@@ -223,10 +249,12 @@ fn SessionMainContent() -> Element {
             } else {
                 if !temporary.is_empty() {
                     messages.push((
-                        sender_uuid_now.is_some(),
-                        match sender_uuid_now {
-                            Some(uuid) => crate::ui::assets::get_avatar(&baker_state.operators.read()[&uuid].avatar),
-                            None => crate::ui::assets::get_avatar("endministratorf"),
+                        sender_now.is_some_and(|x| x.avatar_should_on_left()),
+                        match sender_now {
+                            Some(Sender::Others(uuid)) => {
+                                crate::ui::assets::get_avatar(&baker_state.operators.read()[&uuid].avatar)
+                            }
+                            _ => crate::ui::assets::get_avatar("endministratorf"),
                         },
                         temporary,
                     ));
@@ -239,7 +267,7 @@ fn SessionMainContent() -> Element {
                     peek.unwrap().1.content.clone(),
                     peek.unwrap().1.animation,
                 )];
-                sender_uuid_now = peek.and_then(|x| x.1.sender);
+                sender_now = peek.map(|x| x.1.sender);
             }
             iter.next();
         }
@@ -270,7 +298,7 @@ fn InputArea(
     with_more_menu_open: Signal<bool>,
     with_sender_selector_message_type: Signal<bool>,
     with_sender_selector_open: Signal<bool>,
-    on_submit: EventHandler<Option<Uuid>>,
+    on_submit: EventHandler<crate::Sender>,
 ) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
     let participants_ids_count = baker_state
@@ -289,10 +317,10 @@ fn InputArea(
 
     let on_submit_click = move |evt: Event<MouseData>| match evt.modifiers().ctrl() {
         true => match participants_ids_count {
-            1 => on_submit.call(Some(first_participant)),
+            1 => on_submit.call(Sender::Others(first_participant)),
             _ => with_sender_selector_open.set(true),
         },
-        false => on_submit.call(None),
+        false => on_submit.call(Sender::Endministrator),
     };
 
     let input_area_style = if with_more_menu_open() {
@@ -317,11 +345,11 @@ fn InputArea(
                             match evt.modifiers().ctrl() {
                                 true => {
                                     match participants_ids_count {
-                                        1 => on_submit.call(Some(first_participant)),
+                                        1 => on_submit.call(Sender::Others(first_participant)),
                                         _ => with_sender_selector_open.set(true),
                                     }
                                 }
-                                false => on_submit.call(None),
+                                false => on_submit.call(Sender::Endministrator),
                             }
                         }
                     },
@@ -355,23 +383,12 @@ fn InputArea(
                         .chain(iter::once((None, "管理员".to_owned())))
                         .collect(),
                     title: "选择发送者",
-                    optional_kv: vec![
-                        ("a".to_string(), "默认消息".to_string()),
-                        ("c".to_string(), "分隔线".to_string()),
-                        ("d".to_string(), "“状态”".to_string()),
-                        ("e".to_string(), "“状态”（带分隔符）".to_string()),
-                    ],
-                    optional_title: "消息类型",
-                    func: move |(message_type, uuid): (Option<String>, Option<Uuid>)| {
+                    message_type_selector: true,
+                    func: move |(message_type, sender): (Option<InputAreaMessageType>, Sender)| {
                         if let Some(message_type) = message_type {
-                            let message_type: InputAreaMessageType = message_type
-                                .as_str()
-                                .try_into()
-                                .unwrap();
-
                             input_area_message_type.set(message_type);
                         }
-                        on_submit.call(uuid);
+                        on_submit.call(sender);
                         with_sender_selector_open.set(false);
                     },
                     on_close: move |_| {
@@ -411,7 +428,7 @@ fn MoreMenu(
     with_more_menu_open: Signal<bool>,
     with_sender_selector_open: Signal<bool>,
     input_area_message_type: Signal<InputAreaMessageType>,
-    on_submit: EventHandler<Option<Uuid>>,
+    on_submit: EventHandler<Sender>,
 ) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
     let session_id = current_session.unwrap();
@@ -497,41 +514,107 @@ fn MessageRow(
     messages: Vec<(u64, crate::MessageType, bool)>,
     on_delete_message: EventHandler<(Uuid, u64)>,
 ) -> Element {
-    let avatar_left_class = if avatar_on_left {
-        "message-row-avatar message-row-avatar-background"
-    } else {
-        "message-row-avatar"
-    };
+    if messages.is_empty() {
+        return rsx! {};
+    }
 
-    let avatar_right_class = if !avatar_on_left {
-        "message-row-avatar message-row-avatar-background"
-    } else {
-        "message-row-avatar"
-    };
+    let mut baker_state = use_context::<crate::BakerState>();
+    let message_id = messages[0].0;
 
-    rsx! {
-        div { class: "flex flex-row",
-            // 左侧头像
-            div { class: avatar_left_class,
-                if avatar_on_left {
-                    img { src: avatar }
-                }
+    // 用于分隔符等的 Actions 菜单
+    let action = move || {
+        let delete_messages = move |_| {
+            let session_uuid = baker_state.current_session.unwrap();
+            let message_id = message_id;
+
+            on_delete_message.call((session_uuid, message_id));
+
+            let messages = baker_state.messages.as_mut();
+            messages.unwrap().remove(&message_id);
+
+            baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
+        };
+
+        let on_prepare_to_modify = move |_| {
+            baker_state
+                .input_area_mode
+                .set(crate::InputAreaMode::Modify { id: message_id });
+        };
+
+        let on_prepare_to_insert = move |_| {
+            baker_state
+                .input_area_mode
+                .set(crate::InputAreaMode::Insert { id: message_id });
+        };
+
+        rsx! {
+            span { class: "special-actions",
+                span { onclick: delete_messages, "⤷ 删除" }
+                span { onclick: on_prepare_to_modify, "修改" }
+                span { onclick: on_prepare_to_insert, "在此前插入消息" }
             }
-            // 中间消息
-            div { class: if avatar_on_left { "message-row-content message-row-content-left" } else { "message-row-content message-row-content-right" },
-                for message in messages {
-                    MessageBubble {
-                        key: "{message.0}",
-                        avatar_on_left,
-                        message,
-                        on_delete_message,
+        }
+    };
+
+    match &messages[0].1 {
+        crate::MessageType::HorizontalBreak => rsx! {
+            div { class: "horizontal-break",
+                span {}
+                {action()}
+            }
+        },
+        crate::MessageType::State(txt) => rsx! {
+            div { class: "state",
+                span { {txt.to_string()} }
+                {action()}
+            }
+        },
+        crate::MessageType::StateWithHorizontalLine(txt) => rsx! {
+            div { class: "state-with-hl",
+                span {}
+                span { {txt.to_string()} }
+                span {}
+                {action()}
+            }
+        },
+        crate::MessageType::Text(_) | crate::MessageType::Image(_) => {
+            let avatar_left_class = if avatar_on_left {
+                "message-row-avatar message-row-avatar-background"
+            } else {
+                "message-row-avatar"
+            };
+
+            let avatar_right_class = if !avatar_on_left {
+                "message-row-avatar message-row-avatar-background"
+            } else {
+                "message-row-avatar"
+            };
+
+            rsx! {
+                div { class: "flex flex-row",
+                    // 左侧头像
+                    div { class: avatar_left_class,
+                        if avatar_on_left {
+                            img { src: avatar }
+                        }
                     }
-                }
-            }
-            // 右侧头像
-            div { class: avatar_right_class,
-                if !avatar_on_left {
-                    img { src: avatar }
+                    // 中间消息
+                    div { class: if avatar_on_left { "message-row-content message-row-content-left" } else { "message-row-content message-row-content-right" },
+                        for message in messages {
+                            MessageBubble {
+                                key: "{message.0}",
+                                avatar_on_left,
+                                message,
+                                on_delete_message,
+                            }
+                        }
+                    }
+                    // 右侧头像
+                    div { class: avatar_right_class,
+                        if !avatar_on_left {
+                            img { src: avatar }
+                        }
+                    }
                 }
             }
         }
@@ -603,44 +686,21 @@ fn MessageBubble(
         }
     };
 
-    let mut img_uuid = use_signal(|| None);
-    let mut img_src = use_signal(String::new);
-
-    use_effect(move || {
-        img_uuid.read();
-
-        spawn(async move {
-            if img_uuid.read().is_none() {
-                return;
-            }
-
-            let blob = crate::database::get_multimedia(img_uuid.unwrap())
-                .await
-                .unwrap()
-                .unwrap();
-            let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
-
-            img_src.set(url);
-        });
-    });
-
     rsx! {
         div { class: "message-bubble-wrapper",
             if !avatar_on_left {
                 {message_actions_right}
             }
             match message.1 {
-                crate::MessageType::Text(text) => rsx! {
-                    span { class: bubble_class, {text} }
+                crate::MessageType::Text(txt) => rsx! {
+                    span { class: bubble_class, {txt} }
                 },
                 crate::MessageType::Image(uuid) => rsx! {
                     span { class: "{bubble_class} message-bubble-image",
-                        img { onmounted: move |_| img_uuid.set(Some(uuid)), src: {img_src} }
+                        Image { uuid }
                     }
                 },
-                crate::MessageType::HorizontalBreak => todo!(),
-                crate::MessageType::State(_) => todo!(),
-                crate::MessageType::StateWithHorizontalLine(_) => todo!(),
+                _ => unreachable!(),
             }
 
             if avatar_on_left {
