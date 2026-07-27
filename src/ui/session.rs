@@ -495,6 +495,9 @@ fn MoreMenu(
                             onclick: move |_| {
                                 baker_state.sessions.write().retain(|k, _| { *k != session_id });
                                 baker_state.current_session.set(None);
+                                wasm_bindgen_futures::spawn_local(async move {
+                                    crate::database::delete_session_messages(session_id).await.unwrap();
+                                });
                             },
                             "删除此会话（消息会永久消失！）"
                         }

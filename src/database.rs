@@ -202,15 +202,67 @@ pub(crate) async fn delete_message(session_uuid: Uuid, message_id: u64) -> index
     };
 
     let transaction = db
-        .transaction("messages")
+        .transaction(["messages", "multimedia"])
         .with_mode(TransactionMode::Readwrite)
         .build()?;
 
-    let obj_store = transaction.object_store("messages")?;
+    let object_store = transaction.object_store("messages")?;
+    let object_store_multimedia = transaction.object_store("multimedia")?;
 
     let key_range = KeyRange::Only((session_uuid, message_id));
 
-    obj_store.delete(key_range).serde()?.await?;
+    if let Some(message) = object_store.get(key_range.clone()).serde()?.await? {
+        let message: MessageWrapper = message;
+
+        if let crate::MessageType::Image(uuid) = message.message.content {
+            object_store_multimedia.delete(KeyRange::Only(uuid)).serde()?.await?;
+        }
+
+        object_store.delete(key_range).serde()?.await?;
+    }
+
+    transaction.commit().await?;
+
+    Ok(())
+}
+
+pub(crate) async fn delete_session_messages(session_uuid: Uuid) -> indexed_db_futures::Result<()> {
+    let db = {
+        let db = DB.read();
+        db.as_ref().cloned().expect("Database not initialized")
+    };
+
+    let transaction = db
+        .transaction(["messages", "multimedia"])
+        .with_mode(TransactionMode::Readwrite)
+        .build()?;
+
+    let object_store = transaction.object_store("messages")?;
+    let object_store_multimedia = transaction.object_store("multimedia")?;
+
+    let key_range = KeyRange::Bound((session_uuid, 0), false, (session_uuid, MAX_SAFE_INTEGER), false);
+
+    if let Some(cursor) = object_store
+        .open_cursor()
+        .with_query(key_range.clone())
+        .serde()?
+        .await?
+    {
+        let stream = cursor.stream_ser::<MessageWrapper>();
+        let messages = stream
+            .map(|x| x.unwrap())
+            .map(|x| x.message)
+            .collect::<Vec<crate::Message>>()
+            .await;
+
+        for message in messages {
+            if let crate::MessageType::Image(uuid) = message.content {
+                object_store_multimedia.delete(KeyRange::Only(uuid)).serde()?.await?;
+            }
+        }
+    }
+
+    object_store.delete(key_range).serde()?.await?;
 
     transaction.commit().await?;
 
@@ -235,6 +287,26 @@ pub(crate) async fn save_multimedia(uuid: Uuid, blob: web_sys::Blob) -> indexed_
     Reflect::set(&obj, &JsValue::from_str("blob"), &blob.into())?;
 
     obj_store.put(obj).build()?.await?;
+    transaction.commit().await?;
+
+    Ok(())
+}
+
+#[allow(unused)]
+pub(crate) async fn remove_multimedia(uuid: Uuid) -> indexed_db_futures::Result<()> {
+    let db = {
+        let db = DB.read();
+        db.as_ref().cloned().expect("Database not initialized")
+    };
+
+    let transaction = db
+        .transaction("multimedia")
+        .with_mode(TransactionMode::Readwrite)
+        .build()?;
+
+    let obj_store = transaction.object_store("multimedia")?;
+
+    obj_store.delete(KeyRange::Only(uuid)).serde()?.await?;
     transaction.commit().await?;
 
     Ok(())

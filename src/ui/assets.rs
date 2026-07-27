@@ -35,6 +35,8 @@ pub(crate) static CHARACTERS_AVATARS: sync::LazyLock<fnv::FnvHashMap<&str, Asset
     hashmap.insert("pograni", ICON_ROUND_CHR_0029_POGRANI);
     hashmap.insert("zhuangfy", ICON_ROUND_CHR_0030_ZHUANGFY);
     hashmap.insert("mifu", ICON_ROUND_CHR_0031_MIFU);
+    hashmap.insert("lzy", ICON_ROUND_CHR_0032_LIZHIYAN);
+    hashmap.insert("camille", ICON_ROUND_CHR_0033_CAMILLE);
 
     hashmap.insert("none", ICON_SNS_NPC_SINGLE);
 
@@ -72,6 +74,9 @@ pub(crate) static CHARACTERS_NAME: sync::LazyLock<fnv::FnvHashMap<&str, &str>> =
     hashmap.insert("pograni", "骏卫");
     hashmap.insert("zhuangfy", "庄方宜");
     hashmap.insert("mifu", "弭弗");
+    hashmap.insert("lzy", "李织烟");
+    hashmap.insert("camille", "卡缪");
+
     hashmap.insert("none", "未知");
 
     hashmap
