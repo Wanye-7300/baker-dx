@@ -177,8 +177,8 @@ button {
     to bottom,
     transparent 2%,
     black 6%,
-    black 94%,
-    transparent 98%
+    black calc(100% - 40px),
+    transparent calc(100% - 20px)
   );
   padding: 30px 0 40px 0;
   display: flex;
@@ -314,6 +314,15 @@ button {
 
 #more-menu::-webkit-scrollbar {
   display: none;
+}
+
+.more-menu-upload-button {
+  background-color: white;
+  padding: 3px 100px;
+  border-radius: 2px;
+  border: 1px grey solid;
+  width: 300px;
+  cursor: pointer;
 }
 
 .menu h1,

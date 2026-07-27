@@ -1,6 +1,6 @@
 use std::iter;
 
-use dioxus::{html::script::text, prelude::*, web::WebFileExt};
+use dioxus::{prelude::*, web::WebFileExt};
 use uuid::Uuid;
 
 use crate::Sender;
@@ -8,7 +8,7 @@ use crate::Sender;
 pub(crate) mod selector;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-enum InputAreaMessageType {
+pub(crate) enum InputAreaMessageType {
     #[default]
     Text,
     Image(Uuid),
