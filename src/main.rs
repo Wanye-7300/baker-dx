@@ -269,12 +269,12 @@ fn App() -> Element {
             font-weight: 900;
             font-style: normal;
         }}"#,
-        FONT_THIN.bundled().bundled_path(),
-        FONT_LIGHT.bundled().bundled_path(),
-        FONT_REGULAR.bundled().bundled_path(),
-        FONT_MEDIUM.bundled().bundled_path(),
-        FONT_BOLD.bundled().bundled_path(),
-        FONT_BLACK.bundled().bundled_path(),
+        FONT_THIN.to_string(),
+        FONT_LIGHT.to_string(),
+        FONT_REGULAR.to_string(),
+        FONT_MEDIUM.to_string(),
+        FONT_BOLD.to_string(),
+        FONT_BLACK.to_string(),
     );
 
     let font_face_bender = format!(
@@ -285,7 +285,7 @@ fn App() -> Element {
             font-weight: normal;
             font-style: normal;
         }}"#,
-        FONT_BENDER.bundled().bundled_path()
+        FONT_BENDER.to_string()
     );
 
     let avatar_background_bundled_path = AVATAR_BACKGROUND.bundled();
