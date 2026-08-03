@@ -24,7 +24,7 @@ pub(crate) struct MessageWrapper {
     pub(crate) message: crate::Message,
 }
 
-pub(crate) async fn open_db() -> indexed_db_futures::Result<()> {
+pub(crate) async fn open_db() -> anyhow::Result<()> {
     let db: Database = Database::open("baker")
         .with_version(1u8)
         .with_on_upgrade_needed_fut(async move |event, db| {
@@ -51,11 +51,15 @@ pub(crate) async fn open_db() -> indexed_db_futures::Result<()> {
             Ok(())
         })
         .await
-        .unwrap();
+        .map_err(|error| anyhow::anyhow!("failed to open database: {error:?}"))?;
 
     *DB.write() = Some(db);
 
     Ok(())
+}
+
+pub(crate) fn is_ready() -> bool {
+    DB.read().is_some()
 }
 
 pub(crate) async fn put_messages(messages: Vec<MessageWrapper>) -> indexed_db_futures::Result<()> {

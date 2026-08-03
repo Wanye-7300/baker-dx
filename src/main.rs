@@ -234,9 +234,7 @@ fn provide_baker_state() {
 #[component]
 fn App() -> Element {
     provide_baker_state();
-    spawn(async {
-        database::open_db().await.unwrap();
-    });
+    let _database = use_resource(|| async { database::open_db().await });
 
     let baker_state = use_context::<BakerState>();
     use_effect(move || {
@@ -336,6 +334,10 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: SELECTOR_CSS }
 
-        Router::<Route> {}
+        if database::is_ready() {
+            Router::<Route> {}
+        } else {
+            div { id: "database-loading", class: "flex", "加载数据库" }
+        }
     }
 }
