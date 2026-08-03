@@ -19,6 +19,12 @@ mod utils;
 struct Operator {
     name: String,
     avatar: String,
+    #[serde(default = "default_operator_active")]
+    active: bool,
+}
+
+fn default_operator_active() -> bool {
+    true
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -163,6 +169,7 @@ fn provide_baker_state() {
             Operator {
                 name: "Perlica".to_owned(),
                 avatar: "perlica".to_owned(),
+                active: true,
             },
         );
         operators.insert(
@@ -170,6 +177,7 @@ fn provide_baker_state() {
             Operator {
                 name: "Chen Qianyu".to_owned(),
                 avatar: "chenqy".to_owned(),
+                active: true,
             },
         );
         operators

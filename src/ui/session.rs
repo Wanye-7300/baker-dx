@@ -251,9 +251,12 @@ fn SessionMainContent() -> Element {
                     messages.push((
                         sender_now.is_some_and(|x| x.avatar_should_on_left()),
                         match sender_now {
-                            Some(Sender::Others(uuid)) => {
-                                crate::ui::assets::get_avatar(&baker_state.operators.read()[&uuid].avatar)
-                            }
+                            Some(Sender::Others(uuid)) => baker_state
+                                .operators
+                                .read()
+                                .get(&uuid)
+                                .map(|operator| crate::ui::assets::get_avatar(&operator.avatar))
+                                .unwrap_or_else(|| crate::ui::assets::get_avatar("none")),
                             _ => crate::ui::assets::get_avatar("endministratorf"),
                         },
                         temporary,
@@ -307,17 +310,17 @@ fn InputArea(
         .unwrap()
         .participants_ids
         .len();
-    let first_participant = *baker_state
+    let first_participant = baker_state
         .sessions
         .get(&baker_state.current_session.unwrap())
         .unwrap()
         .participants_ids
         .first()
-        .unwrap();
+        .copied();
 
     let on_submit_click = move |evt: Event<MouseData>| match evt.modifiers().ctrl() {
-        true => match participants_ids_count {
-            1 => on_submit.call(Sender::Others(first_participant)),
+        true => match (participants_ids_count, first_participant) {
+            (1, Some(first_participant)) => on_submit.call(Sender::Others(first_participant)),
             _ => with_sender_selector_open.set(true),
         },
         false => on_submit.call(Sender::Endministrator),
@@ -344,8 +347,10 @@ fn InputArea(
                         if evt.code() == Code::Enter {
                             match evt.modifiers().ctrl() {
                                 true => {
-                                    match participants_ids_count {
-                                        1 => on_submit.call(Sender::Others(first_participant)),
+                                    match (participants_ids_count, first_participant) {
+                                        (1, Some(first_participant)) => {
+                                            on_submit.call(Sender::Others(first_participant))
+                                        }
                                         _ => with_sender_selector_open.set(true),
                                     }
                                 }
@@ -379,7 +384,13 @@ fn InputArea(
                         .unwrap()
                         .participants_ids
                         .iter()
-                        .map(|x| (Some(*x), baker_state.operators.get(x).unwrap().name.clone()))
+                        .filter_map(|x| {
+                            baker_state
+                                .operators
+                                .get(x)
+                                .filter(|operator| operator.active)
+                                .map(|operator| (Some(*x), operator.name.clone()))
+                        })
                         .chain(iter::once((None, "管理员".to_owned())))
                         .collect(),
                     title: "选择发送者",

@@ -31,7 +31,13 @@ pub(super) fn Baker() -> Element {
 #[component]
 pub(crate) fn ParticipantsSelection(participants_ids: Signal<fnv::FnvHashSet<Uuid>>) -> Element {
     let baker_state = use_context::<crate::BakerState>();
-    let operators = (*baker_state.operators.read()).clone();
+    let operators = baker_state
+        .operators
+        .read()
+        .iter()
+        .filter(|(_, operator)| operator.active)
+        .map(|(id, operator)| (*id, operator.clone()))
+        .collect::<Vec<_>>();
 
     rsx! {
         div { class: "participants",
@@ -275,6 +281,7 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                                         crate::Operator {
                                             name: trimmed,
                                             avatar: new_operator_avatar_id(),
+                                            active: true,
                                         },
                                     );
                                 name.write().clear();
@@ -287,7 +294,7 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
 
                     // 已有干员列表
                     div { class: "participants",
-                        for (id , op) in baker_state.operators.read().iter() {
+                        for (id , op) in baker_state.operators.read().iter().filter(|(_, operator)| operator.active) {
                             div { class: "participant participant-setting flex flex-row",
                                 span { class: "flex-1", "{op.name}" }
                                 span { class: "actions-participant-setting",
@@ -295,10 +302,25 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                                         onclick: {
                                             let id = *id;
                                             move |_| {
-                                                baker_state.operators.write().remove(&id);
+                                                if let Some(operator) = baker_state.operators.write().get_mut(&id) {
+                                                    operator.active = false;
+                                                }
+
+                                                let operators = baker_state.operators.read();
+                                                for session in baker_state.sessions.write().values_mut() {
+                                                    session.participants_ids.retain(|participant_id| *participant_id != id);
+                                                    session.avatar = match session.participants_ids.as_slice() {
+                                                        [participant_id] => operators
+                                                            .get(participant_id)
+                                                            .filter(|operator| operator.active)
+                                                            .map(|operator| operator.avatar.clone())
+                                                            .unwrap_or_default(),
+                                                        _ => String::new(),
+                                                    };
+                                                }
                                             }
                                         },
-                                        "删除此干员"
+                                        "停用干员"
                                     }
                                     span {
                                         onclick: {

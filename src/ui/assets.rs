@@ -83,12 +83,10 @@ pub(crate) static CHARACTERS_NAME: sync::LazyLock<fnv::FnvHashMap<&str, &str>> =
 });
 
 pub(crate) fn get_avatar(id: &str) -> Asset {
-    if id.is_empty() {
-        CHARACTERS_AVATARS["none"]
-    } else {
-        // TODO: 好危险。
-        CHARACTERS_AVATARS[id]
-    }
+    CHARACTERS_AVATARS
+        .get(id)
+        .copied()
+        .unwrap_or(CHARACTERS_AVATARS["none"])
 }
 
 pub(crate) fn get_group_avatar(id: &str) -> Asset {
