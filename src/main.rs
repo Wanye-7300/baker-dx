@@ -99,6 +99,19 @@ struct Session {
     id: u64,
 }
 
+impl Session {
+    fn refresh_avatar(&mut self, operators: &fnv::FnvHashMap<Uuid, Operator>) {
+        self.avatar = match self.participants_ids.as_slice() {
+            [participant_id] => operators
+                .get(participant_id)
+                .filter(|operator| operator.active)
+                .map(|operator| operator.avatar.clone())
+                .unwrap_or_default(),
+            _ => String::new(),
+        };
+    }
+}
+
 /// 决定输入框的行为。
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
 enum InputAreaMode {

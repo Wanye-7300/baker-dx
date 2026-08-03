@@ -304,25 +304,9 @@ fn InputArea(
     on_submit: EventHandler<crate::Sender>,
 ) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
-    let participants_ids_count = baker_state
-        .sessions
-        .get(&baker_state.current_session.unwrap())
-        .unwrap()
-        .participants_ids
-        .len();
-    let first_participant = baker_state
-        .sessions
-        .get(&baker_state.current_session.unwrap())
-        .unwrap()
-        .participants_ids
-        .first()
-        .copied();
 
     let on_submit_click = move |evt: Event<MouseData>| match evt.modifiers().ctrl() {
-        true => match (participants_ids_count, first_participant) {
-            (1, Some(first_participant)) => on_submit.call(Sender::Others(first_participant)),
-            _ => with_sender_selector_open.set(true),
-        },
+        true => with_sender_selector_open.set(true),
         false => on_submit.call(Sender::Endministrator),
     };
 
@@ -346,14 +330,7 @@ fn InputArea(
                     onkeypress: move |evt: Event<KeyboardData>| {
                         if evt.code() == Code::Enter {
                             match evt.modifiers().ctrl() {
-                                true => {
-                                    match (participants_ids_count, first_participant) {
-                                        (1, Some(first_participant)) => {
-                                            on_submit.call(Sender::Others(first_participant))
-                                        }
-                                        _ => with_sender_selector_open.set(true),
-                                    }
-                                }
+                                true => with_sender_selector_open.set(true),
                                 false => on_submit.call(Sender::Endministrator),
                             }
                         }
@@ -444,7 +421,7 @@ fn MoreMenu(
     let mut baker_state = use_context::<crate::BakerState>();
     let session_id = current_session.unwrap();
     let session_name = baker_state.sessions.get(&session_id).unwrap().session_name.clone();
-    let participants_ids = use_signal(|| {
+    let participants_ids: Signal<fnv::FnvHashSet<Uuid>> = use_signal(|| {
         baker_state
             .sessions
             .get(&session_id)
@@ -453,6 +430,17 @@ fn MoreMenu(
             .iter()
             .cloned()
             .collect()
+    });
+
+    use_effect(move || {
+        let mut participant_ids = participants_ids.read().iter().copied().collect::<Vec<_>>();
+        participant_ids.sort_unstable();
+
+        let operators = baker_state.operators.read();
+        if let Some(session) = baker_state.sessions.write().get_mut(&session_id) {
+            session.participants_ids = participant_ids;
+            session.refresh_avatar(&operators);
+        }
     });
 
     let onchange = move |evt: Event<FormData>| {

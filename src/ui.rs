@@ -44,13 +44,6 @@ pub(crate) fn ParticipantsSelection(participants_ids: Signal<fnv::FnvHashSet<Uui
             for (k , v) in operators {
                 div {
                     class: "participant",
-                    onclick: move |_| {
-                        if participants_ids.read().get(&k).is_none() {
-                            participants_ids.write().insert(k);
-                        } else {
-                            participants_ids.write().remove(&k);
-                        }
-                    },
                     input {
                         r#type: "checkbox",
                         id: k.to_string(),
@@ -309,14 +302,7 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                                                 let operators = baker_state.operators.read();
                                                 for session in baker_state.sessions.write().values_mut() {
                                                     session.participants_ids.retain(|participant_id| *participant_id != id);
-                                                    session.avatar = match session.participants_ids.as_slice() {
-                                                        [participant_id] => operators
-                                                            .get(participant_id)
-                                                            .filter(|operator| operator.active)
-                                                            .map(|operator| operator.avatar.clone())
-                                                            .unwrap_or_default(),
-                                                        _ => String::new(),
-                                                    };
+                                                    session.refresh_avatar(&operators);
                                                 }
                                             }
                                         },
