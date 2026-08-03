@@ -696,6 +696,16 @@ button {
   background-color: #fdfc0090;
 }
 
+.dialog-buttons-confirm:disabled {
+  background-color: #d7d7d7;
+  color: #858585;
+  cursor: not-allowed;
+}
+
+.dialog-buttons-confirm:disabled:hover {
+  background-color: #d7d7d7;
+}
+
 @keyframes dialog-popup {
   from {
     opacity: 0;
@@ -713,6 +723,16 @@ button {
   font-size: 0.95em;
   width: 100%;
   height: 40px;
+}
+
+.dialog-validation-errors {
+  margin-top: 8px;
+}
+
+.dialog-validation-error {
+  margin: 4px 0 0;
+  color: #d32f2f;
+  font-size: 0.9rem;
 }
 
 #new-sessions-dialog {

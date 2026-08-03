@@ -70,7 +70,13 @@ pub(crate) fn ParticipantsSelection(participants_ids: Signal<fnv::FnvHashSet<Uui
 }
 
 #[component]
-pub(crate) fn Dialog(title: String, on_confirm: EventHandler, uuid: Uuid, children: Element) -> Element {
+pub(crate) fn Dialog(
+    title: String,
+    on_confirm: EventHandler,
+    uuid: Uuid,
+    #[props(default)] confirm_disabled: bool,
+    children: Element,
+) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
 
     rsx! {
@@ -100,6 +106,7 @@ pub(crate) fn Dialog(title: String, on_confirm: EventHandler, uuid: Uuid, childr
                 div { class: "dialog-buttons flex flex-row",
                     button {
                         class: "dialog-buttons-confirm",
+                        disabled: confirm_disabled,
                         onclick: move |_| on_confirm.call(()),
                         "好"
                     }
@@ -120,17 +127,23 @@ pub(crate) fn DialogNewSession(
     rsx! {
         Dialog {
             title: "添加新会话",
+            confirm_disabled: session_name.read().trim().is_empty() || participants_ids.read().is_empty(),
             on_confirm: move |_| {
                 let mut baker_state = use_context::<crate::BakerState>();
+                let session_name = session_name.read().trim().to_owned();
+
+                if session_name.is_empty() || participants_ids.read().is_empty() {
+                    return;
+                }
+
                 baker_state
                     .sessions
                     .write()
                     .insert(
                         Uuid::new_v4(),
                         crate::Session {
-                            session_name: session_name(),
+                            session_name,
                             avatar: match participants_ids.read().iter().count() {
-                                0 => unimplemented!(),
                                 1 => {
                                     baker_state
                                         .operators
@@ -176,6 +189,23 @@ pub(crate) fn DialogNewSession(
                 }
 
                 ParticipantsSelection { participants_ids }
+
+                div { class: "dialog-validation-errors",
+                    if session_name.read().trim().is_empty() {
+                        p {
+                            class: "dialog-validation-error",
+                            role: "alert",
+                            "请填写会话名"
+                        }
+                    }
+                    if participants_ids.read().is_empty() {
+                        p {
+                            class: "dialog-validation-error",
+                            role: "alert",
+                            "请至少选择一名参与者"
+                        }
+                    }
+                }
             }
         }
     }
