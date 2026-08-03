@@ -31,27 +31,43 @@ impl TryFrom<&str> for InputAreaMessageType {
     }
 }
 
+struct ObjectUrl(String);
+
+impl Drop for ObjectUrl {
+    fn drop(&mut self) {
+        let _ = web_sys::Url::revoke_object_url(&self.0);
+    }
+}
+
 #[component]
 pub(crate) fn Image(
-    uuid: Uuid,
+    uuid: ReadSignal<Uuid>,
     #[props(extends = GlobalAttributes, extends = img)] attributes: Vec<Attribute>,
 ) -> Element {
-    let mut img_src = use_signal(String::new);
-    let img_uuid = use_signal(|| uuid);
+    let image_url = use_resource(move || {
+        let uuid = uuid();
 
-    use_effect(move || {
-        img_uuid.read();
+        async move {
+            let blob = crate::database::get_multimedia(uuid)
+                .await
+                .map_err(|error| format!("读取图片失败：{error}"))?
+                .ok_or_else(|| "图片数据不存在".to_string())?;
+            let url = web_sys::Url::create_object_url_with_blob(&blob).map_err(|_| "创建图片地址失败".to_string())?;
 
-        spawn(async move {
-            let blob = crate::database::get_multimedia(img_uuid()).await.unwrap().unwrap();
-            let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
-
-            img_src.set(url);
-        });
+            Ok::<ObjectUrl, String>(ObjectUrl(url))
+        }
     });
 
-    rsx! {
-        img { src: img_src, ..attributes }
+    let image_url = image_url.read();
+
+    match image_url.as_ref() {
+        Some(Ok(url)) => rsx! {
+            img { src: url.0.clone(), ..attributes }
+        },
+        Some(Err(error)) => rsx! {
+            span { class: "message-image-error", role: "alert", {error.to_string()} }
+        },
+        None => rsx! {},
     }
 }
 

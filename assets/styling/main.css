@@ -556,6 +556,12 @@ button {
   border-radius: 5px;
 }
 
+.message-image-error {
+  display: inline-block;
+  padding: 12px;
+  color: #d32f2f;
+}
+
 .horizontal-break,
 .state,
 .state-with-hl {
