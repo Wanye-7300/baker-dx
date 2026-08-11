@@ -64,7 +64,7 @@ button {
 
 #app {
   height: 100vh;
-  padding: 20px;
+  padding: 20px 40px 50px 40px;
   gap: 20px;
 }
 
@@ -154,6 +154,15 @@ button {
   height: 100%;
 }
 
+#session-decorate {
+  position: fixed;
+  top: 60px;
+  right: -28px;
+  z-index: -100;
+  transform: scale(0.8);
+  opacity: 0.2;
+}
+
 #session-not-chosen {
   flex: 1;
   align-items: center;
@@ -185,6 +194,7 @@ button {
   flex: 1;
   position: relative;
   min-height: 0;
+  background: #ffffff0b;
 }
 
 #session-main-content {
@@ -589,12 +599,46 @@ button {
   align-items: center;
   justify-content: center;
   margin: 0 3%;
+  animation: bounce 0.2s linear forwards;
+}
+
+.horizontal-break > img.hb-deco1 {
+  position: absolute;
+  left: 20px;
+  top: 5px;
+  clip-path: xywh(0 4px 100% 100%);
+  opacity: 0.4;
+}
+
+.horizontal-break > img.hb-deco2 {
+  position: absolute;
+  right: 3px;
+  bottom: -10px;
+  opacity: 0.4;
 }
 
 .horizontal-break > span {
   flex: 1;
   width: 100%;
   background-color: #a9a8a6;
+}
+
+@keyframes bounce {
+  0% {
+    opacity: 0;
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  85% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
 .state {

@@ -167,6 +167,10 @@ pub(super) fn SessionUI() -> Element {
                         }
                     }
                 }
+                img {
+                    id: "session-decorate",
+                    src: crate::DECO_SNS_TWEET_DECORATE_10,
+                }
             }
         }
     } else {
@@ -538,6 +542,8 @@ fn MessageRow(
         crate::MessageType::HorizontalBreak => rsx! {
             div { class: "horizontal-break",
                 span {}
+                img { class: "hb-deco1", src: crate::DECO_SNS_TWEET_DECORATE_11 }
+                img { class: "hb-deco2", src: crate::LINE_SNS_TWEET_DECORATE }
                 {action()}
             }
         },
