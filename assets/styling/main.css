@@ -565,16 +565,18 @@ button {
   border-image-source: var(--message-bubble-others);
   border-image-slice: 20 20 18 30 fill;
   border-image-width: 20px 20px 18px 30px;
-  padding: 12px 10px 12px 20px;
+  padding: 8px 10px 10px 20px;
   color: white;
+  line-height: 1.6;
 }
 
 .message-bubble-self {
   border-image-source: var(--message-bubble-self);
   border-image-slice: 20 30 18 20 fill;
   border-image-width: 20px 30px 18px 20px;
-  padding: 12px 20px 12px 10px;
+  padding: 8px 20px 8px 10px;
   color: black;
+  line-height: 1.6;
 }
 
 .message-bubble-animate-left {
