@@ -171,6 +171,9 @@ const INPUT_AREA_MORE_SELECTED: Asset = asset!("/assets/deco/input_area_more_sel
 const DECO_SNS_TWEET_DECORATE_10: Asset = asset!("/assets/extracted/decorate/deco_sns_tweet_decorate_10.png");
 const DECO_SNS_TWEET_DECORATE_11: Asset = asset!("/assets/extracted/decorate/deco_sns_tweet_decorate_11.png");
 const LINE_SNS_TWEET_DECORATE: Asset = asset!("/assets/extracted/decorate/line_sns_tweet_decorate.png");
+const DECO_SNS_TWEET_DECORATE_02: Asset = asset!("/assets/extracted/decorate/deco_sns_tweet_decorate_02.png");
+const SNS_LIST_DECORATE_2: Asset = asset!("/assets/extracted/decorate/sns_list_decorate_2.png");
+const DECO_SNS_TWEET_DECORATE: Asset = asset!("/assets/extracted/decorate/deco_sns_tweet_decorate.png");
 
 fn main() {
     dioxus::launch(App);
@@ -340,7 +343,7 @@ fn App() -> Element {
         document::Style { {font_face} }
         document::Style { {font_face_bender} }
         document::Style {
-            ":root {{ --avatar-background: url(\"{avatar_background_bundled_path}\"); --avatar-frame: url(\"{avatar_frame_bundled_path}\"); --message-bubble-self: url(\"{message_bubble_self_bundled_path}\"); --message-bubble-others: url(\"{message_bubble_others_bundled_path}\"); --session-title-left-bar: url(\"{session_title_left_bar_bundled_path}\"); --session-title-right-bar: url(\"{session_title_right_bar_bundled_path}\"); --icon-sns-chat-emoticon: url(\"{icon_sns_chat_emoticon_bundled_path}\"); --icon-sns-message-02: url(\"{icon_sns_message_02_bundled_path}\"); --input-area-more: url(\"{input_area_more_bundled_path}\"); --input-area-more-selected: url(\"{input_area_more_selected_bundled_path}\"); --deco_sns_tweet_decorate_10: url(\"{DECO_SNS_TWEET_DECORATE_10.bundled().bundled_path()}\"); }}"
+            ":root {{ --avatar-background: url(\"{avatar_background_bundled_path}\"); --avatar-frame: url(\"{avatar_frame_bundled_path}\"); --message-bubble-self: url(\"{message_bubble_self_bundled_path}\"); --message-bubble-others: url(\"{message_bubble_others_bundled_path}\"); --session-title-left-bar: url(\"{session_title_left_bar_bundled_path}\"); --session-title-right-bar: url(\"{session_title_right_bar_bundled_path}\"); --icon-sns-chat-emoticon: url(\"{icon_sns_chat_emoticon_bundled_path}\"); --icon-sns-message-02: url(\"{icon_sns_message_02_bundled_path}\"); --input-area-more: url(\"{input_area_more_bundled_path}\"); --input-area-more-selected: url(\"{input_area_more_selected_bundled_path}\"); --deco_sns_tweet_decorate_10: url(\"{DECO_SNS_TWEET_DECORATE_10.bundled().bundled_path()}\"); --deco_sns_tweet_decorate_02: url(\"{DECO_SNS_TWEET_DECORATE_02.bundled().bundled_path()}\"); --sns_list_decorate_2: url(\"{SNS_LIST_DECORATE_2.bundled().bundled_path()}\"); --deco_sns_tweet_decorate: url(\"{DECO_SNS_TWEET_DECORATE.bundled().bundled_path()}\"); }}"
         }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: SELECTOR_CSS }

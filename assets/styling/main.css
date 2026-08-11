@@ -102,7 +102,7 @@ button {
 
 #session-cards {
   height: calc(100% + 5px);
-  width: 320px;
+  width: 420px;
   gap: 5px;
 }
 
@@ -117,14 +117,35 @@ button {
   /* TODO: 渐变边框。上：#404040，下：#787878 */
   border: #737373 solid 2px;
   border-radius: 5px;
-  --card-padding: 10px;
+  --card-padding: 6px 6px 6px 8px;
   padding: var(--card-padding);
   width: 100%;
-  height: 80px;
+  height: 85px;
   cursor: pointer;
-  gap: 15px;
+  gap: 18px;
   align-items: center;
   font-size: 1.15em;
+  position: relative;
+  isolation: isolate;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--deco_sns_tweet_decorate_02) no-repeat right center / auto
+    110%;
+  opacity: 0.025;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    var(--sns_list_decorate_2) no-repeat top 9px right 12px,
+    var(--deco_sns_tweet_decorate) no-repeat top 56px left 96px / 38px 4px;
+  opacity: 0.28;
 }
 
 .card:last-child {
