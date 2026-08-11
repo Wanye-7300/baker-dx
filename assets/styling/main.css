@@ -867,19 +867,19 @@ button {
   bottom: calc(var(--input-area-height) - 10px);
   /* background-color: #19cffd; */
   --repeat-width: 4px;
-  background: #19cffd;
-  padding: 4px 12px;
+  background: #62abba;
+  padding: 6px 12px;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  border-radius: 2px;
+  align-items: center;
   font-size: 0.9em;
   animation: insert-mode-wrapper-popup 0.15s ease-out forwards;
   width: 150px;
 }
 
 #insert-mode-wrapper.modify-mode {
-  background: #ffa500;
+  background: #cc8400;
 }
 
 #insert-mode-wrapper > span {
@@ -892,6 +892,7 @@ button {
   background-color: transparent;
   color: black;
   font-weight: 500;
+  font-size: 1.2em;
   transition: background-color ease-out 0.1s;
 }
 
