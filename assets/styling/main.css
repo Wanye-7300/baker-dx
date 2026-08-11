@@ -64,11 +64,12 @@ button {
 
 #app {
   height: 100vh;
-  padding: 20px 40px 50px 40px;
-  gap: 20px;
+  padding: 26px 40px 50px 40px;
+  gap: 50px;
 }
 
 #title {
+  font-size: 1.1em;
   cursor: pointer;
 }
 
@@ -177,7 +178,7 @@ button {
 
 #session-decorate {
   position: fixed;
-  top: 60px;
+  top: 100px;
   right: -28px;
   z-index: -100;
   transform: scale(0.8);

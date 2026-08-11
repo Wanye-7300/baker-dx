@@ -31,7 +31,7 @@ pub(super) fn Baker() -> Element {
                     with_settings_open.set(true);
                 },
                 id: "title",
-                "// BAKER / Messages"
+                "//BAKER/会话消息"
             }
             div { id: "main-content", class: "flex flex-row",
                 session_cards::SessionCards { session_name, participants_ids }
