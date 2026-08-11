@@ -5,6 +5,14 @@ pub(crate) mod assets;
 mod session;
 mod session_cards;
 
+struct ObjectUrl(String);
+
+impl Drop for ObjectUrl {
+    fn drop(&mut self) {
+        let _ = web_sys::Url::revoke_object_url(&self.0);
+    }
+}
+
 #[component]
 pub(super) fn Baker() -> Element {
     let baker_state = use_context::<crate::BakerState>();
@@ -13,9 +21,18 @@ pub(super) fn Baker() -> Element {
     let session_name = use_signal(String::new);
     let participants_ids = use_signal(fnv::FnvHashSet::default);
 
+    let mut with_settings_open = use_signal(|| false);
+
     rsx! {
         div { id: "app", class: "flex flex-column",
-            div { id: "title", "// BAKER / Messages" }
+            div {
+                ondoubleclick: move |evt| {
+                    evt.stop_propagation();
+                    with_settings_open.set(true);
+                },
+                id: "title",
+                "// BAKER / Messages"
+            }
             div { id: "main-content", class: "flex flex-row",
                 session_cards::SessionCards { session_name, participants_ids }
                 session::SessionUI {}
@@ -25,6 +42,50 @@ pub(super) fn Baker() -> Element {
         for (_uuid , dialog) in dialogs.iter() {
             {dialog}
         }
+
+        if with_settings_open() {
+            crate::settings::components::Settings {
+                on_close: move |_| {
+                    with_settings_open.set(false);
+                },
+            }
+        }
+
+        if let Some(uuid) = crate::utils::get_item_or_default("wallpaper", || None::<Uuid>) {
+            Image { id: "background-image", uuid }
+        }
+    }
+}
+
+#[component]
+pub(crate) fn Image(
+    uuid: ReadSignal<Uuid>,
+    #[props(extends = GlobalAttributes, extends = img)] attributes: Vec<Attribute>,
+) -> Element {
+    let image_url = use_resource(move || {
+        let uuid = uuid();
+
+        async move {
+            let blob = crate::database::get_multimedia(uuid)
+                .await
+                .map_err(|error| format!("读取图片失败：{error}"))?
+                .ok_or_else(|| "图片数据不存在".to_string())?;
+            let url = web_sys::Url::create_object_url_with_blob(&blob).map_err(|_| "创建图片地址失败".to_string())?;
+
+            Ok::<ObjectUrl, String>(ObjectUrl(url))
+        }
+    });
+
+    let image_url = image_url.read();
+
+    match image_url.as_ref() {
+        Some(Ok(url)) => rsx! {
+            img { src: url.0.clone(), ..attributes }
+        },
+        Some(Err(error)) => rsx! {
+            span { class: "message-image-error", role: "alert", {error.to_string()} }
+        },
+        None => rsx! {},
     }
 }
 
@@ -42,8 +103,7 @@ pub(crate) fn ParticipantsSelection(participants_ids: Signal<fnv::FnvHashSet<Uui
     rsx! {
         div { class: "participants",
             for (k , v) in operators {
-                div {
-                    class: "participant",
+                div { class: "participant",
                     input {
                         r#type: "checkbox",
                         id: k.to_string(),
@@ -191,16 +251,10 @@ pub(crate) fn DialogNewSession(
 
                 div { class: "dialog-validation-errors",
                     if session_name.read().trim().is_empty() {
-                        p {
-                            class: "dialog-validation-error",
-                            role: "alert",
-                            "请填写会话名"
-                        }
+                        p { class: "dialog-validation-error", role: "alert", "请填写会话名" }
                     }
                     if participants_ids.read().is_empty() {
-                        p {
-                            class: "dialog-validation-error",
-                            role: "alert",
+                        p { class: "dialog-validation-error", role: "alert",
                             "请至少选择一名参与者"
                         }
                     }

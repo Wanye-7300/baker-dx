@@ -31,46 +31,6 @@ impl TryFrom<&str> for InputAreaMessageType {
     }
 }
 
-struct ObjectUrl(String);
-
-impl Drop for ObjectUrl {
-    fn drop(&mut self) {
-        let _ = web_sys::Url::revoke_object_url(&self.0);
-    }
-}
-
-#[component]
-pub(crate) fn Image(
-    uuid: ReadSignal<Uuid>,
-    #[props(extends = GlobalAttributes, extends = img)] attributes: Vec<Attribute>,
-) -> Element {
-    let image_url = use_resource(move || {
-        let uuid = uuid();
-
-        async move {
-            let blob = crate::database::get_multimedia(uuid)
-                .await
-                .map_err(|error| format!("读取图片失败：{error}"))?
-                .ok_or_else(|| "图片数据不存在".to_string())?;
-            let url = web_sys::Url::create_object_url_with_blob(&blob).map_err(|_| "创建图片地址失败".to_string())?;
-
-            Ok::<ObjectUrl, String>(ObjectUrl(url))
-        }
-    });
-
-    let image_url = image_url.read();
-
-    match image_url.as_ref() {
-        Some(Ok(url)) => rsx! {
-            img { src: url.0.clone(), ..attributes }
-        },
-        Some(Err(error)) => rsx! {
-            span { class: "message-image-error", role: "alert", {error.to_string()} }
-        },
-        None => rsx! {},
-    }
-}
-
 #[component]
 pub(super) fn SessionUI() -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
@@ -715,7 +675,7 @@ fn MessageBubble(
                 },
                 crate::MessageType::Image(uuid) => rsx! {
                     span { class: "{bubble_class} message-bubble-image",
-                        Image { uuid }
+                        super::Image { uuid }
                     }
                 },
                 _ => unreachable!(),

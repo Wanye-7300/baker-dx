@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 mod database;
+mod settings;
 mod ui;
 mod utils;
 
@@ -231,9 +232,16 @@ fn provide_baker_state() {
     });
 }
 
+fn provide_settings() {
+    let image = use_signal(|| utils::get_item_or_default("wallpaper", || None));
+
+    use_context_provider(|| settings::state::SettingsState { image });
+}
+
 #[component]
 fn App() -> Element {
     provide_baker_state();
+    provide_settings();
     let _database = use_resource(|| async { database::open_db().await });
 
     let baker_state = use_context::<BakerState>();

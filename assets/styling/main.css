@@ -68,6 +68,20 @@ button {
   gap: 20px;
 }
 
+#title {
+  cursor: pointer;
+}
+
+#background-image {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  inset: 0;
+  z-index: -325;
+  object-fit: cover;
+  filter: blur(10px);
+}
+
 #main-content {
   flex: 1;
   gap: 20px;
@@ -846,4 +860,78 @@ button {
     opacity: 0;
     transform: translateY(5px);
   }
+}
+
+/* Settings
+   ================================================================================ */
+
+/* 应该使用其父组件调用这个 */
+.centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  backdrop-filter: blur(2px);
+}
+
+#settings {
+  width: 680px;
+  height: 480px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 10px;
+  border: solid grey 1px;
+  border-radius: 5px;
+  animation: dialog-popup 0.15s ease-out forwards;
+}
+
+#settings * {
+  color: black;
+}
+
+#settings-title {
+  display: flex;
+  flex-direction: row;
+
+  justify-content: space-between;
+  justify-items: center;
+}
+
+#settings-title > h2 {
+  font-weight: 400;
+  font-size: 0.95em;
+  margin: 0;
+  display: inline;
+}
+
+#settings-title > button {
+  background-color: transparent;
+  transition: background-color 0.1s;
+}
+
+#settings-title > button:hover {
+  background-color: #00000020;
+}
+
+#settings-objects > h3 {
+  margin: 10px 0;
+  font-weight: 400;
+}
+
+.settings-object {
+  display: flex;
+  flex-direction: row;
+
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0 10px 20px;
+  border: solid #00000020 2px;
+  border-width: 2px 0;
+}
+
+.choose-file {
+  cursor: pointer;
 }
