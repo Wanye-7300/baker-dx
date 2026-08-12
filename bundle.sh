@@ -1,5 +1,5 @@
-rustup update
+set -euo pipefail
+
 rustup target add wasm32-unknown-unknown
-cargo install cargo-binstall
-cargo binstall dioxus-cli --force
+curl -sSL https://dioxus.dev/install.sh | bash
 dx bundle --release --platform web
