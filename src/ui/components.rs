@@ -34,9 +34,15 @@ pub(crate) fn RichText(
         }
     }
 
-    info!("Build: {}", string_build);
+    if let Some(emoji_content) = emoji {
+        string_build.push(':');
+        string_build.push_str(&emoji_content);
+    }
 
-    let markdown = markdown::to_html(&string_build);
+    let markdown = match markdown::to_html_with_options(&string_build, &markdown::Options::gfm()) {
+        Ok(markdown) => markdown,
+        Err(_) => markdown::to_html(&string_build),
+    };
 
     rsx! {
         div { class: "markdown", dangerous_inner_html: markdown, ..attributes }
