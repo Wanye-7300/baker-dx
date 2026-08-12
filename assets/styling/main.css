@@ -608,6 +608,19 @@ button {
   margin: 0;
 }
 
+.message-bubble-self *,
+.message-bubble-others * {
+  user-select: text;
+}
+
+.message-bubble-self img,
+.message-bubble-others img {
+  vertical-align: bottom;
+  height: 1.6em;
+  clip-path: inset(2px 2px 2px 2px);
+  transform: translateY(1px);
+}
+
 .message-bubble-animate-left {
   animation: bubble-slide-in-left 0.1s cubic-bezier(1, 0, 1, 0.8);
   transform-origin: left center;
