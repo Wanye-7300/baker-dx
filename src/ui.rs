@@ -33,6 +33,17 @@ pub(super) fn Baker() -> Element {
                 },
                 id: "title",
                 "//BAKER/会话消息"
+
+                img {
+                    ondoubleclick: move |evt| {
+                        evt.stop_propagation();
+                    },
+                    onclick: move |evt| {
+                        evt.stop_propagation();
+                    },
+                    id: "title-decoration",
+                    src: crate::ACHIEVEMENT_MAIN_DECO05,
+                }
             }
             div { id: "main-content", class: "flex flex-row",
                 session_cards::SessionCards { session_name, participants_ids }

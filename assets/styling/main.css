@@ -71,20 +71,19 @@ button {
   gap: 50px;
 }
 
-#title::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background:
-    var(--achievement_main_deco05) no-repeat top 12px left 40px / 55px auto,
-    transparent;
-  opacity: 0.4;
-}
-
 #title {
   position: relative;
   font-size: 1.1em;
   cursor: pointer;
+}
+
+#title > img {
+  position: absolute;
+  top: -12px;
+  left: 0;
+  width: 55px;
+  opacity: 0.4;
+  cursor: default;
 }
 
 #background-image {
