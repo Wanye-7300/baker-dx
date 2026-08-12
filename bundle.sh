@@ -1,5 +1,5 @@
 set -euo pipefail
 
 rustup target add wasm32-unknown-unknown
-curl -sSL https://dioxus.dev/install.sh | bash
+cargo install dioxus-cli --locked
 dx bundle --release --platform web
