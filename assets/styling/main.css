@@ -68,7 +68,18 @@ button {
   gap: 50px;
 }
 
+#title::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    var(--achievement_main_deco05) no-repeat top 12px left 40px / 55px auto,
+    transparent;
+  opacity: 0.4;
+}
+
 #title {
+  position: relative;
   font-size: 1.1em;
   cursor: pointer;
 }
@@ -652,11 +663,11 @@ button {
     opacity: 0;
   }
 
-  70% {
+  50% {
     opacity: 1;
   }
 
-  85% {
+  75% {
     opacity: 0;
   }
 
@@ -684,21 +695,48 @@ button {
   gap: 15px;
 }
 
-.state-with-hl > span:first-child {
-  background-color: #92908e;
+.state-with-hl > span:first-child,
+.state-with-hl > span:nth-child(3) {
+  background-color: #a9a8a6;
   height: 3px;
   flex: 1;
+
+  transform: scaleX(0);
+  animation: line-expand 0.15s ease-in forwards;
+}
+
+.state-with-hl > span:first-child {
+  transform-origin: left center;
 }
 
 .state-with-hl > span:nth-child(2) {
   color: #929190;
   font-size: 1.1em;
+  animation: state-appear 0.2s ease-in forwards;
 }
 
 .state-with-hl > span:nth-child(3) {
-  background-color: #92908e;
-  height: 3px;
-  flex: 1;
+  transform-origin: right center;
+}
+
+@keyframes line-expand {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes state-appear {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes bubble-slide-in-left {
