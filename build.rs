@@ -11,7 +11,11 @@ fn walk<P: AsRef<path::Path>>(dir: P, start_with: Option<&str>, code: &mut Strin
         }
 
         if let Some(start_with) = start_with {
-            if !entry.path().starts_with(start_with) {
+            let Some(file_name) = entry.path().file_name().and_then(|x| x.to_str()) else {
+                continue;
+            };
+
+            if !file_name.starts_with(start_with) {
                 continue;
             }
         }

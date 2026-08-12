@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use uuid::Uuid;
 
 pub(crate) mod assets;
+pub(crate) mod components;
 mod session;
 mod session_cards;
 

@@ -82,6 +82,52 @@ pub(crate) static CHARACTERS_NAME: sync::LazyLock<fnv::FnvHashMap<&str, &str>> =
     hashmap
 });
 
+#[allow(unused)]
+pub(crate) static EMOJI: sync::LazyLock<fnv::FnvHashMap<&str, Asset>> = sync::LazyLock::new(|| {
+    let mut hashmap = fnv::FnvHashMap::default();
+
+    hashmap.insert(":smile:", SNS_EMOJI_001);
+    hashmap.insert(":star_eye:", SNS_EMOJI_002);
+    hashmap.insert(":surprise:", SNS_EMOJI_003);
+    hashmap.insert(":smug:", SNS_EMOJI_004);
+    hashmap.insert(":thumb:", SNS_EMOJI_005);
+    hashmap.insert(":please:", SNS_EMOJI_006);
+    hashmap.insert(":lol:", SNS_EMOJI_007);
+    hashmap.insert(":cry:", SNS_EMOJI_008);
+    hashmap.insert(":unwell:", SNS_EMOJI_009);
+    hashmap.insert(":sweat:", SNS_EMOJI_010);
+    hashmap.insert(":cool:", SNS_EMOJI_011);
+    hashmap.insert(":playful:", SNS_EMOJI_012);
+    hashmap.insert(":confused:", SNS_EMOJI_013);
+    hashmap.insert(":sorry:", SNS_EMOJI_014);
+    hashmap.insert(":pray:", SNS_EMOJI_015);
+    hashmap.insert(":ok:", SNS_EMOJI_016);
+    hashmap.insert(":tongue:", SNS_EMOJI_017);
+    hashmap.insert(":love:", SNS_EMOJI_018);
+    hashmap.insert(":blush:", SNS_EMOJI_019);
+    hashmap.insert(":joy:", SNS_EMOJI_020);
+    hashmap.insert(":heart:", SNS_EMOJI_021);
+    hashmap.insert(":sparkle:", SNS_EMOJI_022);
+    hashmap.insert(":sweat_smile:", SNS_EMOJI_023);
+    hashmap.insert(":laugh:", SNS_EMOJI_024);
+    hashmap.insert(":plus_one:", SNS_EMOJI_025);
+    hashmap.insert(":side_eye:", SNS_EMOJI_026);
+    hashmap.insert(":hundred:", SNS_EMOJI_027);
+    hashmap.insert(":dead:", SNS_EMOJI_028);
+    hashmap.insert(":anger:", SNS_EMOJI_029);
+    hashmap.insert(":angry:", SNS_EMOJI_030);
+    hashmap.insert(":dizzy:", SNS_EMOJI_031);
+    hashmap.insert(":scream:", SNS_EMOJI_032);
+    hashmap.insert(":sad:", SNS_EMOJI_033);
+    hashmap.insert(":sleep:", SNS_EMOJI_034);
+    hashmap.insert(":doubt:", SNS_EMOJI_035);
+    hashmap.insert(":speechless:", SNS_EMOJI_036);
+    hashmap.insert(":fist_bump:", SNS_EMOJI_037);
+    hashmap.insert(":think:", SNS_EMOJI_038);
+
+    hashmap
+});
+
 pub(crate) fn get_avatar(id: &str) -> Asset {
     CHARACTERS_AVATARS
         .get(id)

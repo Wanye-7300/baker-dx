@@ -3,6 +3,7 @@ use std::iter;
 use dioxus::{prelude::*, web::WebFileExt};
 use uuid::Uuid;
 
+use crate::ui::components::*;
 use crate::Sender;
 
 pub(crate) mod selector;
@@ -304,18 +305,36 @@ fn InputArea(
     rsx! {
         div { id: "input-area", class: input_area_style.to_string(),
             div { id: "input-area-input",
-                input {
+                // input {
+                //     id: "input-area-input-input",
+                //     oninput: move |evt| { input_area_text.set(evt.value()) },
+                //     onkeypress: move |evt: Event<KeyboardData>| {
+                //         if evt.code() == Code::Enter {
+                //             match evt.modifiers().ctrl() {
+                //                 true => with_sender_selector_open.set(true),
+                //                 false => on_submit.call(Sender::Endministrator),
+                //             }
+                //         }
+                //     },
+                //     r#type: "text",
+                //     value: input_area_text,
+                // }
+                textarea {
                     id: "input-area-input-input",
                     oninput: move |evt| { input_area_text.set(evt.value()) },
-                    onkeypress: move |evt: Event<KeyboardData>| {
+                    onkeydown: move |evt: Event<KeyboardData>| {
                         if evt.code() == Code::Enter {
+                            if evt.modifiers().shift() {
+                                return;
+                            }
+                            evt.stop_propagation();
+                            evt.prevent_default();
                             match evt.modifiers().ctrl() {
                                 true => with_sender_selector_open.set(true),
                                 false => on_submit.call(Sender::Endministrator),
                             }
                         }
                     },
-                    r#type: "text",
                     value: input_area_text,
                 }
             }
@@ -677,7 +696,7 @@ fn MessageBubble(
             }
             match message.1 {
                 crate::MessageType::Text(txt) => rsx! {
-                    span { class: bubble_class, {txt} }
+                    RichText { class: bubble_class, text: txt }
                 },
                 crate::MessageType::Image(uuid) => rsx! {
                     span { class: "{bubble_class} message-bubble-image",
