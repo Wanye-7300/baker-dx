@@ -48,3 +48,45 @@ pub(crate) fn RichText(
         div { class: "markdown", dangerous_inner_html: markdown, ..attributes }
     }
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct MenuItem {
+    pub(crate) icon: Option<Asset>,
+    pub(crate) label: String,
+    pub(crate) on_click: EventHandler,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct MenuGroup {
+    pub(crate) title: Option<String>,
+    pub(crate) items: Vec<MenuItem>,
+}
+
+#[component]
+pub(crate) fn Menu(groups: Vec<MenuGroup>, on_close: EventHandler, x: f64, y: f64) -> Element {
+    rsx! {
+        div { class: "backdrop", onclick: move |_| on_close.call(()),
+            div { class: "_menu", style: "left: {x}px; top: {y}px",
+
+                for group in groups {
+                    if let Some(title) = group.title {
+                        h3 { class: "_menu-group-header", {title} }
+                    }
+
+                    for item in group.items {
+                        button {
+                            class: "_menu-group-item-button",
+                            onclick: move |_| item.on_click.call(()),
+
+                            if let Some(icon) = item.icon {
+                                img { class: "_menu-group-item-icon", src: icon }
+                            }
+
+                            {item.label}
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

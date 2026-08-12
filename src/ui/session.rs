@@ -213,6 +213,8 @@ fn SessionMainContent() -> Element {
 
     let mut messages = vec![];
 
+    let mut with_message_actions_menu_open = use_signal(|| None);
+
     if let Some(m) = baker_state.messages.read().as_ref() {
         let mut iter = m.iter().peekable();
 
@@ -269,6 +271,44 @@ fn SessionMainContent() -> Element {
                             crate::database::delete_message(session_uuid, message_id).await.unwrap();
                         });
                     },
+                    on_open_actions_menu: move |information| {
+                        with_message_actions_menu_open.set(Some(information));
+                    },
+                }
+            }
+
+            if let Some((session_uuid, message_id, x, y)) = with_message_actions_menu_open() {
+                Menu {
+                    groups: vec![
+                        MenuGroup {
+                            title: Some(String::from("对消息进行操作")),
+                            items: vec![
+                                MenuItem {
+                                    icon: None,
+                                    label: String::from("删除"),
+                                    on_click: EventHandler::new(move |_| {
+                                        spawn(async move {
+                                            crate::database::delete_message(session_uuid, message_id)
+                                                .await
+                                                .unwrap();
+
+                                            let messages = baker_state.messages.as_mut();
+                                            messages.unwrap().remove(&message_id);
+
+                                            baker_state
+                                                .input_area_mode
+                                                .set(crate::InputAreaMode::Normal);
+                                        });
+                                    }),
+                                },
+                            ],
+                        },
+                    ],
+                    on_close: move |_| {
+                        with_message_actions_menu_open.set(None);
+                    },
+                    x,
+                    y,
                 }
             }
         }
@@ -514,6 +554,8 @@ fn MessageRow(
     avatar: Asset,
     messages: Vec<(u64, crate::MessageType, bool)>,
     on_delete_message: EventHandler<(Uuid, u64)>,
+    /// 会话 Uuid, 消息 id, clientX, clientY
+    on_open_actions_menu: EventHandler<(Uuid, u64, f64, f64)>,
 ) -> Element {
     if messages.is_empty() {
         return rsx! {};
@@ -521,6 +563,12 @@ fn MessageRow(
 
     let mut baker_state = use_context::<crate::BakerState>();
     let message_id = messages[0].0;
+
+    let oncontextmenu = move |evt: Event<MouseData>| {
+        evt.prevent_default();
+        let position = evt.client_coordinates();
+        on_open_actions_menu.call((baker_state.current_session.unwrap(), message_id, position.x, position.y));
+    };
 
     // 用于分隔符等的 Actions 菜单
     let action = move || {
@@ -560,14 +608,13 @@ fn MessageRow(
     match &messages[0].1 {
         crate::MessageType::HorizontalBreak => rsx! {
             div { class: "horizontal-break",
-                span {}
+                span { oncontextmenu }
                 img { class: "hb-deco1", src: crate::DECO_SNS_TWEET_DECORATE_11 }
                 img { class: "hb-deco2", src: crate::LINE_SNS_TWEET_DECORATE }
-                {action()}
             }
         },
         crate::MessageType::State(txt) => rsx! {
-            div { class: "state",
+            div { class: "state", oncontextmenu,
                 span { {txt.to_string()} }
                 {action()}
             }

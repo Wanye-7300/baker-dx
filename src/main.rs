@@ -149,6 +149,7 @@ const FAVICON: Asset = asset!("/assets/favicon.ico");
 const NORMALIZE_CSS: Asset = asset!("/assets/styling/normalize.css");
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 const SELECTOR_CSS: Asset = asset!("/assets/styling/selector.css");
+const MENU_CSS: Asset = asset!("/assets/styling/menu.css");
 
 const FONT_THIN: Asset = asset!("/assets/HarmonyOS_Sans_Thin.ttf");
 const FONT_LIGHT: Asset = asset!("/assets/HarmonyOS_Sans_Light.ttf");
@@ -348,6 +349,7 @@ fn App() -> Element {
         }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: SELECTOR_CSS }
+        document::Link { rel: "stylesheet", href: MENU_CSS }
 
         if database::is_ready() {
             Router::<Route> {}
