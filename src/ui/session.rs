@@ -206,6 +206,13 @@ pub(super) fn SessionUI() -> Element {
                                     },
                                     MenuItem {
                                         icon: Some(
+                                            icons::ADD_REACTION_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48,
+                                        ),
+                                        label: String::from("添加Reaction…"),
+                                        on_click: EventHandler::new(move |_| {}),
+                                    },
+                                    MenuItem {
+                                        icon: Some(
                                             icons::ARROW_INSERT_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48,
                                         ),
                                         label: String::from("在此前插入消息…"),
@@ -218,7 +225,7 @@ pub(super) fn SessionUI() -> Element {
                                         }),
                                     },
                                     MenuItem {
-                                        icon: Some(icons::EDIT_24DP_000000_FILL0_WGHT400_GRAD0_OPSZ24),
+                                        icon: Some(icons::EDIT_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
                                         label: String::from("修改消息…"),
                                         on_click: EventHandler::new(move |_| {
                                             baker_state
