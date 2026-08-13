@@ -4,9 +4,12 @@
   background-color: white;
   z-index: 325;
   padding: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   min-width: 200px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
 }
 
 ._menu * {
@@ -32,14 +35,31 @@
 ._menu-group-item-button {
   display: block;
   width: 100%;
-  padding-left: 30px;
+  padding-left: 15px;
+  padding-right: 15px;
   text-align: left;
   height: 40px;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   background-color: white;
   transition: background-color 0.1s linear;
 }
 
 ._menu-group-item-button:hover {
   background-color: #00000020;
+}
+
+._menu-group-item-button-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+}
+
+._menu-group-item-button-wrapper > *:nth-child(1) {
+  height: 75%;
+  flex: 0;
+}
+
+._menu-group-item-button-wrapper > *:nth-child(2) {
 }

@@ -65,8 +65,22 @@ pub(crate) struct MenuGroup {
 #[component]
 pub(crate) fn Menu(groups: Vec<MenuGroup>, on_close: EventHandler, x: f64, y: f64) -> Element {
     rsx! {
-        div { class: "backdrop", onclick: move |_| on_close.call(()),
-            div { class: "_menu", style: "left: {x}px; top: {y}px",
+        div {
+            class: "backdrop",
+            onclick: move |_| on_close.call(()),
+            oncontextmenu: move |evt| {
+                on_close.call(());
+                evt.stop_propagation();
+                evt.prevent_default();
+            },
+
+            div {
+                class: "_menu",
+                style: "left: {x}px; top: {y}px",
+                oncontextmenu: move |evt| {
+                    evt.stop_propagation();
+                    evt.prevent_default();
+                },
 
                 for group in groups {
                     if let Some(title) = group.title {
@@ -78,11 +92,15 @@ pub(crate) fn Menu(groups: Vec<MenuGroup>, on_close: EventHandler, x: f64, y: f6
                             class: "_menu-group-item-button",
                             onclick: move |_| item.on_click.call(()),
 
-                            if let Some(icon) = item.icon {
-                                img { class: "_menu-group-item-icon", src: icon }
-                            }
+                            div { class: "_menu-group-item-button-wrapper",
+                                if let Some(icon) = item.icon {
+                                    img { src: icon }
+                                } else {
+                                    span {}
+                                }
 
-                            {item.label}
+                                {item.label}
+                            }
                         }
                     }
                 }

@@ -6,7 +6,7 @@ fn walk<P: AsRef<path::Path>>(dir: P, start_with: Option<&str>, code: &mut Strin
     for entry in WalkDir::new(dir) {
         let entry = entry.unwrap();
 
-        if !entry.path().is_file() || !entry.path().extension().is_some_and(|x| x == "png") {
+        if !entry.path().is_file() || !entry.path().extension().is_some_and(|x| x == "png" || x == "svg") {
             continue;
         }
 
@@ -24,7 +24,7 @@ fn walk<P: AsRef<path::Path>>(dir: P, start_with: Option<&str>, code: &mut Strin
         let relative = entry.path().to_string_lossy().replace("\\", "/");
 
         code.write_fmt(format_args!(
-            "#[allow(unused)] pub(crate) const {stem}: Asset = asset!(\"{relative}\");\n"
+            "#[allow(unused)] pub(crate) const {stem}: dioxus::prelude::Asset = dioxus::prelude::asset!(\"{relative}\"); "
         ))
         .unwrap();
     }
@@ -40,6 +40,15 @@ fn main() {
 
     walk("assets/extracted/avatar", None, &mut code);
     walk("assets/extracted/emoji", Some("sns_emoji"), &mut code);
+
+    code.write_fmt(format_args!(
+        "#[allow(unused)] pub(crate) mod icons {{ use dioxus::prelude::*; "
+    ))
+    .unwrap();
+
+    walk("assets/icons", None, &mut code);
+
+    code.write_fmt(format_args!("}}")).unwrap();
 
     fs::write(dest, code).unwrap();
 }

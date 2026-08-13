@@ -3,6 +3,7 @@ use std::iter;
 use dioxus::{prelude::*, web::WebFileExt};
 use uuid::Uuid;
 
+use crate::ui::assets::icons;
 use crate::ui::components::*;
 use crate::Sender;
 
@@ -41,6 +42,8 @@ pub(super) fn SessionUI() -> Element {
     let with_sender_selector_message_type = use_signal(|| true);
     let with_sender_selector_open = use_signal(|| false);
     let with_more_menu_open = use_signal(|| false);
+
+    let mut with_message_actions_menu_open = use_signal(|| None);
 
     let mut input_area_message_type = use_signal(InputAreaMessageType::default);
     let mut input_area_text = use_signal(String::new);
@@ -149,7 +152,11 @@ pub(super) fn SessionUI() -> Element {
                     span { {current_session_name} }
                 }
                 div { id: "session-main", class: "flex flex-column",
-                    SessionMainContent {}
+                    SessionMainContent {
+                        on_open_actions_menu: move |information| {
+                            with_message_actions_menu_open.set(Some(information));
+                        },
+                    }
                     InputArea {
                         input_area_message_type,
                         input_area_text,
@@ -172,6 +179,65 @@ pub(super) fn SessionUI() -> Element {
                     id: "session-decorate",
                     src: crate::DECO_SNS_TWEET_DECORATE_10,
                 }
+
+                if let Some((session_uuid, message_id, x, y)) = with_message_actions_menu_open() {
+                    Menu {
+                        groups: vec![
+                            MenuGroup {
+                                title: Some(String::from("对消息进行操作")),
+                                items: vec![
+                                    MenuItem {
+                                        icon: Some(icons::DELETE_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
+                                        label: String::from("删除"),
+                                        on_click: EventHandler::new(move |_| {
+                                            spawn(async move {
+                                                crate::database::delete_message(session_uuid, message_id)
+                                                    .await
+                                                    .unwrap();
+
+                                                let messages = baker_state.messages.as_mut();
+                                                messages.unwrap().remove(&message_id);
+
+                                                baker_state
+                                                    .input_area_mode
+                                                    .set(crate::InputAreaMode::Normal);
+                                            });
+                                        }),
+                                    },
+                                    MenuItem {
+                                        icon: Some(
+                                            icons::ARROW_INSERT_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48,
+                                        ),
+                                        label: String::from("在此前插入消息…"),
+                                        on_click: EventHandler::new(move |_| {
+                                            baker_state
+                                                .input_area_mode
+                                                .set(crate::InputAreaMode::Insert {
+                                                    id: message_id,
+                                                });
+                                        }),
+                                    },
+                                    MenuItem {
+                                        icon: Some(icons::EDIT_24DP_000000_FILL0_WGHT400_GRAD0_OPSZ24),
+                                        label: String::from("修改消息…"),
+                                        on_click: EventHandler::new(move |_| {
+                                            baker_state
+                                                .input_area_mode
+                                                .set(crate::InputAreaMode::Modify {
+                                                    id: message_id,
+                                                });
+                                        }),
+                                    },
+                                ],
+                            },
+                        ],
+                        on_close: move |_| {
+                            with_message_actions_menu_open.set(None);
+                        },
+                        x,
+                        y,
+                    }
+                }
             }
         }
     } else {
@@ -182,7 +248,10 @@ pub(super) fn SessionUI() -> Element {
 }
 
 #[component]
-fn SessionMainContent() -> Element {
+fn SessionMainContent(
+    /// 会话 Uuid, 消息 id, clientX, clientY
+    on_open_actions_menu: EventHandler<(Uuid, u64, f64, f64)>,
+) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
 
     use_resource(move || async move {
@@ -212,8 +281,6 @@ fn SessionMainContent() -> Element {
     });
 
     let mut messages = vec![];
-
-    let mut with_message_actions_menu_open = use_signal(|| None);
 
     if let Some(m) = baker_state.messages.read().as_ref() {
         let mut iter = m.iter().peekable();
@@ -266,49 +333,7 @@ fn SessionMainContent() -> Element {
                     avatar_on_left,
                     avatar,
                     messages,
-                    on_delete_message: move |(session_uuid, message_id)| {
-                        spawn(async move {
-                            crate::database::delete_message(session_uuid, message_id).await.unwrap();
-                        });
-                    },
-                    on_open_actions_menu: move |information| {
-                        with_message_actions_menu_open.set(Some(information));
-                    },
-                }
-            }
-
-            if let Some((session_uuid, message_id, x, y)) = with_message_actions_menu_open() {
-                Menu {
-                    groups: vec![
-                        MenuGroup {
-                            title: Some(String::from("对消息进行操作")),
-                            items: vec![
-                                MenuItem {
-                                    icon: None,
-                                    label: String::from("删除"),
-                                    on_click: EventHandler::new(move |_| {
-                                        spawn(async move {
-                                            crate::database::delete_message(session_uuid, message_id)
-                                                .await
-                                                .unwrap();
-
-                                            let messages = baker_state.messages.as_mut();
-                                            messages.unwrap().remove(&message_id);
-
-                                            baker_state
-                                                .input_area_mode
-                                                .set(crate::InputAreaMode::Normal);
-                                        });
-                                    }),
-                                },
-                            ],
-                        },
-                    ],
-                    on_close: move |_| {
-                        with_message_actions_menu_open.set(None);
-                    },
-                    x,
-                    y,
+                    on_open_actions_menu,
                 }
             }
         }
@@ -553,7 +578,6 @@ fn MessageRow(
     avatar_on_left: bool,
     avatar: Asset,
     messages: Vec<(u64, crate::MessageType, bool)>,
-    on_delete_message: EventHandler<(Uuid, u64)>,
     /// 会话 Uuid, 消息 id, clientX, clientY
     on_open_actions_menu: EventHandler<(Uuid, u64, f64, f64)>,
 ) -> Element {
@@ -570,41 +594,6 @@ fn MessageRow(
         on_open_actions_menu.call((baker_state.current_session.unwrap(), message_id, position.x, position.y));
     };
 
-    // 用于分隔符等的 Actions 菜单
-    let action = move || {
-        let delete_messages = move |_| {
-            let session_uuid = baker_state.current_session.unwrap();
-            let message_id = message_id;
-
-            on_delete_message.call((session_uuid, message_id));
-
-            let messages = baker_state.messages.as_mut();
-            messages.unwrap().remove(&message_id);
-
-            baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
-        };
-
-        let on_prepare_to_modify = move |_| {
-            baker_state
-                .input_area_mode
-                .set(crate::InputAreaMode::Modify { id: message_id });
-        };
-
-        let on_prepare_to_insert = move |_| {
-            baker_state
-                .input_area_mode
-                .set(crate::InputAreaMode::Insert { id: message_id });
-        };
-
-        rsx! {
-            span { class: "special-actions",
-                span { onclick: delete_messages, "⤷ 删除" }
-                span { onclick: on_prepare_to_modify, "修改" }
-                span { onclick: on_prepare_to_insert, "在此前插入消息" }
-            }
-        }
-    };
-
     match &messages[0].1 {
         crate::MessageType::HorizontalBreak => rsx! {
             div { class: "horizontal-break",
@@ -616,15 +605,13 @@ fn MessageRow(
         crate::MessageType::State(txt) => rsx! {
             div { class: "state", oncontextmenu,
                 span { {txt.to_string()} }
-                {action()}
             }
         },
         crate::MessageType::StateWithHorizontalLine(txt) => rsx! {
-            div { class: "state-with-hl",
+            div { class: "state-with-hl", oncontextmenu,
                 span {}
                 span { {txt.to_string()} }
                 span {}
-                {action()}
             }
         },
         crate::MessageType::Text(_) | crate::MessageType::Image(_) => {
@@ -655,7 +642,7 @@ fn MessageRow(
                                 key: "{message.0}",
                                 avatar_on_left,
                                 message,
-                                on_delete_message,
+                                on_open_actions_menu,
                             }
                         }
                     }
@@ -675,51 +662,16 @@ fn MessageRow(
 fn MessageBubble(
     avatar_on_left: bool,
     message: (u64, crate::MessageType, bool),
-    on_delete_message: EventHandler<(Uuid, u64)>,
+    on_open_actions_menu: EventHandler<(Uuid, u64, f64, f64)>,
 ) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
 
     let message_id = message.0;
 
-    let delete_messages = move |_| {
-        let session_uuid = baker_state.current_session.unwrap();
-        let message_id = message_id;
-
-        on_delete_message.call((session_uuid, message_id));
-
-        let messages = baker_state.messages.as_mut();
-        messages.unwrap().remove(&message_id);
-
-        baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
-    };
-
-    let on_prepare_to_modify = move |_| {
-        baker_state
-            .input_area_mode
-            .set(crate::InputAreaMode::Modify { id: message.0 });
-    };
-
-    let on_prepare_to_insert = move |_| {
-        baker_state
-            .input_area_mode
-            .set(crate::InputAreaMode::Insert { id: message.0 });
-    };
-
-    // TODO: 添加 修改 和 插入消息的功能
-    let message_actions_left = rsx! {
-        span { class: "actions actions-left",
-            span { onclick: delete_messages, "删除" }
-            span { onclick: on_prepare_to_modify, "修改" }
-            span { onclick: on_prepare_to_insert, "在此前插入消息" }
-        }
-    };
-
-    let message_actions_right = rsx! {
-        span { class: "actions",
-            span { onclick: on_prepare_to_modify, "修改" }
-            span { onclick: on_prepare_to_insert, "在此前插入消息" }
-            span { onclick: delete_messages, "删除" }
-        }
+    let oncontextmenu = move |evt: Event<MouseData>| {
+        evt.prevent_default();
+        let position = evt.client_coordinates();
+        on_open_actions_menu.call((baker_state.current_session.unwrap(), message_id, position.x, position.y));
     };
 
     let bubble_class = if avatar_on_left {
@@ -737,10 +689,7 @@ fn MessageBubble(
     };
 
     rsx! {
-        div { class: "message-bubble-wrapper",
-            if !avatar_on_left {
-                {message_actions_right}
-            }
+        div { class: "message-bubble-wrapper", oncontextmenu,
             match message.1 {
                 crate::MessageType::Text(txt) => rsx! {
                     RichText { class: bubble_class, text: txt }
@@ -751,10 +700,6 @@ fn MessageBubble(
                     }
                 },
                 _ => unreachable!(),
-            }
-
-            if avatar_on_left {
-                {message_actions_left}
             }
         }
     }
