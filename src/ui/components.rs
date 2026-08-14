@@ -3,6 +3,43 @@ use dioxus::prelude::*;
 use strum::VariantArray;
 use uuid::Uuid;
 
+const MENU_VIEWPORT_GAP: f64 = 8.0;
+
+fn viewport_size() -> Option<(f64, f64)> {
+    let window = web_sys::window()?;
+
+    Some((
+        window.inner_width().ok()?.as_f64()?,
+        window.inner_height().ok()?.as_f64()?,
+    ))
+}
+
+fn fit_menu_position(x: f64, y: f64, width: f64, height: f64, viewport_width: f64, viewport_height: f64) -> (f64, f64) {
+    let gap = MENU_VIEWPORT_GAP;
+
+    let mut x = x;
+    let mut y = y;
+
+    // 默认右下展开；右边放不下就翻到左边
+    if x + width > viewport_width - gap {
+        x -= width;
+    }
+
+    // 下边放不下就翻到上边
+    if y + height > viewport_height - gap {
+        y -= height;
+    }
+
+    // 最后兜底，保证无论如何都不会跑出 viewport
+    let max_x = (viewport_width - width - gap).max(gap);
+    let max_y = (viewport_height - height - gap).max(gap);
+
+    x = x.clamp(gap, max_x);
+    y = y.clamp(gap, max_y);
+
+    (x, y)
+}
+
 #[component]
 pub(crate) fn RichText(
     text: String,
@@ -78,6 +115,12 @@ pub(crate) struct MenuGroup {
 
 #[component]
 pub(crate) fn Menu(groups: Vec<MenuGroup>, on_close: EventHandler, x: f64, y: f64) -> Element {
+    let mut position = use_signal(|| (x, y));
+    let mut positioned = use_signal(|| false);
+
+    let (menu_x, menu_y) = position();
+    let visibility = if positioned() { "visible" } else { "hidden" };
+
     rsx! {
         div {
             class: "backdrop",
@@ -90,13 +133,36 @@ pub(crate) fn Menu(groups: Vec<MenuGroup>, on_close: EventHandler, x: f64, y: f6
 
             div {
                 class: "_menu",
-                style: "left: {x}px; top: {y}px",
+                style: "left: {menu_x}px; top: {menu_y}px; visibility: {visibility};",
                 onclick: move |evt| {
                     evt.stop_propagation();
                 },
                 oncontextmenu: move |evt| {
                     evt.stop_propagation();
                     evt.prevent_default();
+                },
+
+                onmounted: move |evt| async move {
+                    let Ok(rect) = evt.data().get_client_rect().await else {
+                        positioned.set(true);
+                        return;
+                    };
+
+                    let Some((viewport_width, viewport_height)) = viewport_size() else {
+                        positioned.set(true);
+                        return;
+                    };
+
+                    let (new_x, new_y) = fit_menu_position(
+                        x,
+                        y,
+                        rect.size.width,
+                        rect.size.height,
+                        viewport_width,
+                        viewport_height,
+                    );
+                    position.set((new_x, new_y));
+                    positioned.set(true);
                 },
 
                 for group in groups {
@@ -152,6 +218,12 @@ pub(crate) fn ReactionMenu(
     let mut emoji_selected = use_signal(|| None);
     let mut participants_ids_selected = use_signal(Vec::new);
 
+    let mut position = use_signal(|| (x, y));
+    let mut positioned = use_signal(|| false);
+
+    let (menu_x, menu_y) = position();
+    let visibility = if positioned() { "visible" } else { "hidden" };
+
     rsx! {
         div {
             class: "backdrop",
@@ -164,13 +236,36 @@ pub(crate) fn ReactionMenu(
 
             div {
                 class: "_menu _reaction_menu",
-                style: "left: {x}px; top: {y}px",
+                style: "left: {menu_x}px; top: {menu_y}px; visibility: {visibility};",
                 onclick: move |evt| {
                     evt.stop_propagation();
                 },
                 oncontextmenu: move |evt| {
                     evt.stop_propagation();
                     evt.prevent_default();
+                },
+
+                onmounted: move |evt| async move {
+                    let Ok(rect) = evt.data().get_client_rect().await else {
+                        positioned.set(true);
+                        return;
+                    };
+
+                    let Some((viewport_width, viewport_height)) = viewport_size() else {
+                        positioned.set(true);
+                        return;
+                    };
+
+                    let (new_x, new_y) = fit_menu_position(
+                        x,
+                        y,
+                        rect.size.width,
+                        rect.size.height,
+                        viewport_width,
+                        viewport_height,
+                    );
+                    position.set((new_x, new_y));
+                    positioned.set(true);
                 },
 
                 h3 { class: "_reaction-menu-group-header", "添加Reaction" }
