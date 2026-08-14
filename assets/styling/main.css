@@ -585,6 +585,9 @@ button {
   border-image-source: var(--message-bubble-others);
   border-image-slice: 20 20 18 30 fill;
   border-image-width: 20px 20px 18px 30px;
+}
+
+.message-bubble-others > div:nth-child(1) {
   padding: 8px 10px 10px 20px;
 }
 
@@ -598,6 +601,9 @@ button {
   border-image-source: var(--message-bubble-self);
   border-image-slice: 20 30 18 20 fill;
   border-image-width: 20px 30px 18px 20px;
+}
+
+.message-bubble-self > div:nth-child(1) {
   padding: 8px 20px 8px 10px;
 }
 
@@ -616,6 +622,7 @@ button {
 .message-bubble-others img {
   vertical-align: bottom;
   height: 1.6em;
+  /* TODO: Emoji 的真实尺寸和大小看图。 */
   clip-path: inset(2px 2px 2px 2px);
   transform: translateY(1px);
 }
@@ -1070,4 +1077,53 @@ button {
 
 .choose-file {
   cursor: pointer;
+}
+
+.message-reaction-wrapper {
+  margin: 0 8px 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 4px;
+}
+
+.message-reaction {
+  white-space: nowrap;
+  display: inline-flex;
+  flex-direction: row;
+  gap: 4px;
+  align-items: center;
+  background-color: #00000015;
+  padding: 5px 8px 5px 6px;
+  --reaction-height: 40px;
+  min-height: var(--reaction-height);
+  border-radius: calc(var(--reaction-height) / 2);
+}
+
+.message-reaction-animation {
+  animation: message-reaction-popup 0.1s cubic-bezier(0, 0.2, 0, 0.99) forwards;
+  transform-origin: left center;
+}
+
+.message-reaction > img {
+  width: 28px;
+  height: auto;
+}
+
+.message-bubble-others .message-reaction > span {
+  color: #a7a7a7;
+}
+
+@keyframes message-reaction-popup {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.5);
+  }
+
+  60% {
+    transform: scaleX(1);
+  }
+
+  100% {
+    opacity: 1;
+  }
 }

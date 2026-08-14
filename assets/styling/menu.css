@@ -63,3 +63,98 @@
 
 ._menu-group-item-button-wrapper > *:nth-child(2) {
 }
+
+._reaction_menu {
+  padding: var(--menu-padding);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transform: translateX(-50%);
+}
+
+._reaction-menu-group-header {
+  font-size: 0.9rem;
+  font-weight: 400;
+  margin: 5px var(--menu-padding) 0 var(--menu-padding);
+  color: grey;
+}
+
+._reaction_menu_main {
+  display: flex;
+  flex-direction: row;
+}
+
+._reaction_menu_emojis {
+  width: 300px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+._reaction_menu_emojis_button {
+  width: 15%;
+  background-color: transparent;
+  transition: background-color 0.05s linear;
+}
+
+._reaction_menu_emojis_button > img {
+  width: 100%;
+}
+
+._reaction_menu_participants_button {
+  width: 200px;
+  height: 40px;
+  background-color: transparent;
+  transition: background-color 0.1s linear;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+._selected {
+  background-color: #00000015;
+}
+
+._reaction_menu_button:hover,
+._reaction_menu_emojis > button:hover,
+._reaction_menu_participants_button:hover {
+  background-color: #00000010;
+}
+
+._reaction_menu_emojis > button:hover._selected,
+._reaction_menu_participants_button:hover._selected {
+  background-color: #00000020;
+}
+
+._reaction_menu_participants_button > span {
+  font-family: "Courier New", Courier, monospace;
+  font-weight: 600;
+}
+
+._reaction_menu_button {
+  align-self: flex-end;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.2rem;
+  border-radius: 0;
+  background-color: transparent;
+  transition:
+    background-color 0.1s linear,
+    color 0.1s linear;
+}
+
+._reaction_menu_button:disabled {
+  color: grey;
+}
+
+._reaction_menu_button > img {
+  width: 30%;
+  transition: opacity 0.1s linear;
+}
+
+._reaction_menu_button:disabled > img {
+  opacity: 0.5;
+}

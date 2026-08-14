@@ -44,6 +44,7 @@ pub(super) fn SessionUI() -> Element {
     let with_more_menu_open = use_signal(|| false);
 
     let mut with_message_actions_menu_open = use_signal(|| None);
+    let mut with_reaction_menu_open = use_signal(|| None);
 
     let mut input_area_message_type = use_signal(InputAreaMessageType::default);
     let mut input_area_text = use_signal(String::new);
@@ -70,6 +71,7 @@ pub(super) fn SessionUI() -> Element {
                 }
             },
             animation: true,
+            reactions: vec![],
         };
 
         let message_wrapper = crate::database::MessageWrapper {
@@ -209,7 +211,10 @@ pub(super) fn SessionUI() -> Element {
                                             icons::ADD_REACTION_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48,
                                         ),
                                         label: String::from("添加Reaction…"),
-                                        on_click: EventHandler::new(move |_| {}),
+                                        on_click: EventHandler::new(move |_| {
+                                            with_reaction_menu_open
+                                                .set(with_message_actions_menu_open());
+                                        }),
                                     },
                                     MenuItem {
                                         icon: Some(
@@ -240,6 +245,44 @@ pub(super) fn SessionUI() -> Element {
                         ],
                         on_close: move |_| {
                             with_message_actions_menu_open.set(None);
+                        },
+                        x,
+                        y,
+                    }
+                }
+
+                if let Some((session_uuid, message_id, x, y)) = with_reaction_menu_open() {
+                    ReactionMenu {
+                        on_confirm: move |(participants_ids_selected, emoji): (Vec<Option<Uuid>>, _)| {
+                            let mut message = baker_state.messages.as_mut().unwrap();
+                            let message = message
+                                .get_mut(&message_id)
+                                .unwrap();
+
+                            if let Some(index) = message.reactions.iter().position(|x| x.0 == emoji)
+                            {
+                                let ids_unlisted = participants_ids_selected
+                                    .iter()
+                                    .filter(|x| !message.reactions[index].1.contains(x))
+                                    .collect::<Vec<_>>();
+                                message.reactions[index].1.extend(ids_unlisted);
+                            } else {
+                                message.reactions.push((emoji, participants_ids_selected));
+                            }
+                            let message = message.clone();
+                            spawn(async move {
+                                crate::database::modify_message(crate::database::MessageWrapper {
+                                        session_uuid,
+                                        message_id,
+                                        message,
+                                    })
+                                    .await
+                                    .unwrap();
+                            });
+                        },
+                        session_uuid,
+                        on_close: move |_| {
+                            with_reaction_menu_open.set(None);
                         },
                         x,
                         y,
@@ -301,6 +344,7 @@ fn SessionMainContent(
                 temporary.push((
                     *peek.unwrap().0,
                     peek.unwrap().1.content.clone(),
+                    peek.unwrap().1.reactions.clone(),
                     peek.unwrap().1.animation,
                 ));
             } else {
@@ -325,6 +369,7 @@ fn SessionMainContent(
                 temporary = vec![(
                     *peek.unwrap().0,
                     peek.unwrap().1.content.clone(),
+                    peek.unwrap().1.reactions.clone(),
                     peek.unwrap().1.animation,
                 )];
                 sender_now = peek.map(|x| x.1.sender);
@@ -584,7 +629,12 @@ fn MoreMenu(
 fn MessageRow(
     avatar_on_left: bool,
     avatar: Asset,
-    messages: Vec<(u64, crate::MessageType, bool)>,
+    messages: Vec<(
+        u64,
+        crate::MessageType,
+        Vec<(crate::ui::assets::Emoji, Vec<Option<Uuid>>)>,
+        bool,
+    )>,
     /// 会话 Uuid, 消息 id, clientX, clientY
     on_open_actions_menu: EventHandler<(Uuid, u64, f64, f64)>,
 ) -> Element {
@@ -668,7 +718,12 @@ fn MessageRow(
 #[component]
 fn MessageBubble(
     avatar_on_left: bool,
-    message: (u64, crate::MessageType, bool),
+    message: (
+        u64,
+        crate::MessageType,
+        Vec<(crate::ui::assets::Emoji, Vec<Option<Uuid>>)>,
+        bool,
+    ),
     on_open_actions_menu: EventHandler<(Uuid, u64, f64, f64)>,
 ) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
@@ -682,13 +737,13 @@ fn MessageBubble(
     };
 
     let bubble_class = if avatar_on_left {
-        if message.2 {
+        if message.3 {
             "message-bubble-others message-bubble-animate-left"
         } else {
             "message-bubble-others"
         }
     } else {
-        if message.2 {
+        if message.3 {
             "message-bubble-self message-bubble-animate-right"
         } else {
             "message-bubble-self"
@@ -699,7 +754,30 @@ fn MessageBubble(
         div { class: "message-bubble-wrapper", oncontextmenu,
             match message.1 {
                 crate::MessageType::Text(txt) => rsx! {
-                    RichText { class: bubble_class, text: txt }
+                    RichText { class: bubble_class, text: txt,
+                        if !message.2.is_empty() {
+                            div { class: "message-reaction-wrapper",
+                                for reaction in message.2 {
+                                    span { class: if message.3 { "message-reaction message-reaction-animation" } else { "message-reaction" },
+                                        img { src: Asset::from(reaction.0) }
+                                        span {
+                                            {
+                                                reaction
+                                                    .1
+                                                    .iter()
+                                                    .map(|x| match x {
+                                                        Some(x) => baker_state.operators.get(x).unwrap().name.clone(),
+                                                        None => String::from("管理员"),
+                                                    })
+                                                    .collect::<Vec<String>>()
+                                                    .join("、")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 },
                 crate::MessageType::Image(uuid) => rsx! {
                     span { class: "{bubble_class} message-bubble-image",

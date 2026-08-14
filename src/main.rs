@@ -89,6 +89,9 @@ struct Message {
     #[serde(skip_serializing)]
     #[serde(default)]
     animation: bool,
+    #[serde(default = "Vec::new")]
+    #[serde(rename = "r")]
+    reactions: Vec<(ui::assets::Emoji, Vec<Option<Uuid>>)>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
