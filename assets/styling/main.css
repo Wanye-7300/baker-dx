@@ -1086,6 +1086,10 @@ button {
   gap: 4px 4px;
 }
 
+.message-bubble-self > .message-reaction-wrapper {
+  margin: 0 12px 8px 0px;
+}
+
 .message-reaction {
   white-space: nowrap;
   display: inline-flex;
