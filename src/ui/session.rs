@@ -1,11 +1,12 @@
 use std::iter;
 
 use dioxus::{prelude::*, web::WebFileExt};
+use strum::VariantArray;
 use uuid::Uuid;
 
-use crate::ui::assets::icons;
-use crate::ui::components::*;
 use crate::Sender;
+use crate::ui::assets::{icons, stickers};
+use crate::ui::components::*;
 
 pub(crate) mod selector;
 
@@ -17,6 +18,7 @@ pub(crate) enum InputAreaMessageType {
     HorizontalBreak,
     State,
     StateWithHorizontalLine,
+    Sticker(super::assets::stickers::Stickers),
 }
 
 impl TryFrom<&str> for InputAreaMessageType {
@@ -42,6 +44,7 @@ pub(super) fn SessionUI() -> Element {
     let with_sender_selector_message_type = use_signal(|| true);
     let with_sender_selector_open = use_signal(|| false);
     let with_more_menu_open = use_signal(|| false);
+    let with_stickers_menu_open = use_signal(|| false);
 
     let mut with_message_actions_menu_open = use_signal(|| None);
     let mut with_reaction_menu_open = use_signal(|| None);
@@ -69,6 +72,7 @@ pub(super) fn SessionUI() -> Element {
                 InputAreaMessageType::StateWithHorizontalLine => {
                     crate::MessageType::StateWithHorizontalLine(input_area_text())
                 }
+                InputAreaMessageType::Sticker(sticker) => crate::MessageType::Sticker(sticker),
             },
             animation: true,
             reactions: vec![],
@@ -163,6 +167,7 @@ pub(super) fn SessionUI() -> Element {
                         input_area_message_type,
                         input_area_text,
                         with_more_menu_open,
+                        with_stickers_menu_open,
                         with_sender_selector_message_type,
                         with_sender_selector_open,
                         on_submit: submit,
@@ -173,6 +178,14 @@ pub(super) fn SessionUI() -> Element {
                             with_more_menu_open,
                             with_sender_selector_open,
                             input_area_message_type,
+                            on_submit: submit,
+                        }
+                    }
+                    if with_stickers_menu_open() {
+                        StickersMenu {
+                            input_area_message_type,
+                            with_stickers_menu_open,
+                            with_sender_selector_open,
                             on_submit: submit,
                         }
                     }
@@ -397,6 +410,7 @@ fn InputArea(
     input_area_message_type: Signal<InputAreaMessageType>,
     input_area_text: Signal<String>,
     with_more_menu_open: Signal<bool>,
+    with_stickers_menu_open: Signal<bool>,
     with_sender_selector_message_type: Signal<bool>,
     with_sender_selector_open: Signal<bool>,
     on_submit: EventHandler<crate::Sender>,
@@ -408,7 +422,7 @@ fn InputArea(
         false => on_submit.call(Sender::Endministrator),
     };
 
-    let input_area_style = if with_more_menu_open() {
+    let input_area_style = if with_more_menu_open() || with_stickers_menu_open() {
         "input-area-with-menu flex flex-row"
     } else {
         "flex flex-row"
@@ -456,16 +470,20 @@ fn InputArea(
                 }
             }
             button { id: "input-area-submit", onclick: on_submit_click }
-            button { id: "input-area-stickers", class: "input-area-button" }
+            button {
+                id: "input-area-stickers",
+                class: if with_stickers_menu_open() { "input-area-stickers-selected input-area-button" } else { "input-area-button" },
+                onclick: move |_| {
+                    with_stickers_menu_open.set(!with_stickers_menu_open());
+                    with_more_menu_open.set(false);
+                },
+            }
             button {
                 id: "input-area-more",
                 class: if with_more_menu_open() { "input-area-more-selected input-area-button" } else { "input-area-button" },
                 onclick: move |_| {
-                    if with_more_menu_open() {
-                        with_more_menu_open.set(false);
-                    } else {
-                        with_more_menu_open.set(true);
-                    }
+                    with_more_menu_open.set(!with_more_menu_open());
+                    with_stickers_menu_open.set(false);
                 },
             }
 
@@ -577,48 +595,68 @@ fn MoreMenu(
     let mut animation_end = use_signal(|| false);
 
     rsx! {
-        div {
-            id: "more-menu-wrapper",
-            onanimationend: move |_| {
-                animation_end.set(true);
-            },
-            if animation_end() {
-                div { id: "more-menu", class: "menu",
-                    label { class: "more-menu-upload-button",
-                        "发送图片"
-                        input {
-                            r#type: "file",
-                            accept: "image/*",
-                            hidden: true,
-                            onchange,
-                        }
-                    }
-                    hr {}
-                    h3 { "会话设置" }
-                    label { "会话名" }
-                    input {
-                        r#type: "text",
-                        value: session_name.to_string(),
-                        onchange: move |evt| {
-                            baker_state.sessions.write().get_mut(&session_id).unwrap().session_name = evt
-                                .value();
+        InputAreaMenu {
+            label { class: "more-menu-upload-button",
+                "发送图片"
+                input {
+                    r#type: "file",
+                    accept: "image/*",
+                    hidden: true,
+                    onchange,
+                }
+            }
+            hr {}
+            h3 { "会话设置" }
+            label { "会话名" }
+            input {
+                r#type: "text",
+                value: session_name.to_string(),
+                onchange: move |evt| {
+                    baker_state.sessions.write().get_mut(&session_id).unwrap().session_name = evt
+                        .value();
+                },
+                {session_name.to_string()}
+            }
+            div { class: "more-menu-actions",
+                span {
+                    onclick: move |_| {
+                        baker_state.sessions.write().retain(|k, _| { *k != session_id });
+                        baker_state.current_session.set(None);
+                        wasm_bindgen_futures::spawn_local(async move {
+                            crate::database::delete_session_messages(session_id).await.unwrap();
+                        });
+                    },
+                    "删除此会话（消息会永久消失！）"
+                }
+            }
+            h3 { "干员管理" }
+            super::ParticipantsSelection { participants_ids }
+        }
+    }
+}
+
+#[component]
+fn StickersMenu(
+    input_area_message_type: Signal<InputAreaMessageType>,
+    with_stickers_menu_open: Signal<bool>,
+    with_sender_selector_open: Signal<bool>,
+    on_submit: EventHandler<Sender>,
+) -> Element {
+    rsx! {
+        InputAreaMenu {
+            div { class: "stickers-menu",
+                for variant in stickers::Stickers::VARIANTS {
+                    img {
+                        onclick: move |_| {
+                            input_area_message_type.set(InputAreaMessageType::Sticker(*variant));
+                            with_sender_selector_open.set(true);
+                            with_stickers_menu_open.set(false);
                         },
-                        {session_name.to_string()}
+                        class: "stickers-menu-sticker",
+                        key: "{*variant:?}",
+                        title: "{*variant:?}",
+                        src: Asset::from(*variant),
                     }
-                    div { class: "more-menu-actions",
-                        span {
-                            onclick: move |_| {
-                                baker_state.sessions.write().retain(|k, _| { *k != session_id });
-                                baker_state.current_session.set(None);
-                                wasm_bindgen_futures::spawn_local(async move {
-                                    crate::database::delete_session_messages(session_id).await.unwrap();
-                                });
-                            },
-                            "删除此会话（消息会永久消失！）"
-                        }
-                    }
-                    h3 { "干员管理" }
-                    super::ParticipantsSelection { participants_ids }
                 }
             }
         }
@@ -671,7 +709,7 @@ fn MessageRow(
                 span {}
             }
         },
-        crate::MessageType::Text(_) | crate::MessageType::Image(_) => {
+        crate::MessageType::Text(_) | crate::MessageType::Image(_) | crate::MessageType::Sticker(_) => {
             let avatar_left_class = if avatar_on_left {
                 "message-row-avatar message-row-avatar-background"
             } else {
@@ -782,6 +820,11 @@ fn MessageBubble(
                 crate::MessageType::Image(uuid) => rsx! {
                     span { class: "{bubble_class} message-bubble-image",
                         super::Image { uuid }
+                    }
+                },
+                crate::MessageType::Sticker(sticker) => rsx! {
+                    div { class: "{bubble_class} message-bubble-sticker",
+                        img { src: Asset::from(sticker) }
                     }
                 },
                 _ => unreachable!(),

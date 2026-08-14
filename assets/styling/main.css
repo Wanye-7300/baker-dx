@@ -326,6 +326,12 @@ button {
     60%;
 }
 
+#input-area-stickers.input-area-stickers-selected {
+  background: #eeecec var(--icon-sns-chat-emoticon-selected) no-repeat center
+    center / 60%;
+  background-color: #404040;
+}
+
 #input-area-more {
   width: var(--button-width);
   border-radius: 100%;
@@ -649,6 +655,17 @@ button {
   width: 100%;
   object-fit: contain;
   border-radius: 5px;
+}
+
+.message-bubble-sticker {
+  width: 100%;
+  height: auto;
+  padding: 10px;
+}
+
+.message-bubble-sticker > img {
+  width: 100%;
+  height: auto;
 }
 
 .message-image-error {
@@ -1130,4 +1147,23 @@ button {
   100% {
     opacity: 1;
   }
+}
+
+/* Stickers Menu
+   ================================================================================ */
+
+.stickers-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.stickers-menu > img {
+  width: 180px;
+  transition: background-color 0.05s linear;
+}
+
+.stickers-menu > img:hover {
+  background-color: #00000010;
+  cursor: pointer;
 }

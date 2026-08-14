@@ -2,7 +2,7 @@
 name = "baker-dx"
 version = "2.0.0-alpha.4"
 authors = ["Chen Siyuan <chensiyuan-2009@outlook.com>"]
-edition = "2021"
+edition = "2024"
 description = "《明日方舟：终末地》二创制作工具"
 readme = "README.md"
 license = "MIT"
@@ -14,6 +14,7 @@ dioxus-sdk = { version = "0.7.0" }
 fnv = "1.0.7"
 futures = "0.3.33"
 futures-util = "0.3.33"
+heck = "0.5.0"
 indexed_db_futures = { version = "0.6.4", features = [
     "async-upgrade",
     "cursors",
@@ -38,6 +39,7 @@ web-sys = { version = "0.3.100", features = [
 ] }
 
 [build-dependencies]
+heck = "0.5.0"
 walkdir = "2.5"
 
 [features]

@@ -321,3 +321,20 @@ pub(crate) fn ReactionMenu(
         }
     }
 }
+
+#[component]
+pub(crate) fn InputAreaMenu(children: Element) -> Element {
+    let mut animation_end = use_signal(|| false);
+
+    rsx! {
+        div {
+            id: "more-menu-wrapper",
+            onanimationend: move |_| {
+                animation_end.set(true);
+            },
+            if animation_end() {
+                div { id: "more-menu", class: "menu", {children} }
+            }
+        }
+    }
+}
