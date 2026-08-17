@@ -4,146 +4,20 @@
 //! > 这个分支用于重写整个项目，目前还处在早期开发中。
 //! > 目前仅支持 Web Platform。
 
-use std::collections;
-
 use crate::ui::Baker;
 use dioxus::prelude::*;
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-mod database;
 mod settings;
 mod ui;
-mod utils;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct Operator {
-    name: String,
-    avatar: String,
-    #[serde(default = "default_operator_active")]
-    active: bool,
-}
-
-fn default_operator_active() -> bool {
-    true
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "t", content = "c")]
-enum MessageType {
-    #[serde(rename = "a")]
-    Text(String),
-
-    #[serde(rename = "b")]
-    Image(Uuid),
-
-    #[serde(rename = "c")]
-    HorizontalBreak,
-
-    #[serde(rename = "d")]
-    State(String),
-
-    #[serde(rename = "e")]
-    StateWithHorizontalLine(String),
-
-    #[serde(rename = "f")]
-    Sticker(ui::assets::stickers::Stickers),
-}
-
-impl MessageType {
-    fn is_text_or_image(&self) -> bool {
-        matches!(self, MessageType::Text(_))
-            || matches!(self, MessageType::Image(_))
-            || matches!(self, MessageType::Sticker(_))
-    }
-}
-
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Debug, Default)]
-#[serde(tag = "st", content = "sc")]
-enum Sender {
-    #[default]
-    #[serde(rename = "end")]
-    Endministrator,
-
-    #[serde(rename = "o")]
-    Others(Uuid),
-
-    /// 分隔符等
-    #[serde(rename = "n")]
-    None,
-}
-
-impl Sender {
-    fn from_optional_uuid(uuid: Option<Uuid>) -> Self {
-        match uuid {
-            Some(uuid) => Self::Others(uuid),
-            None => Self::Endministrator,
-        }
-    }
-
-    fn avatar_should_on_left(&self) -> bool {
-        matches!(self, Self::Others(_))
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-struct Message {
-    sender: Sender,
-    #[serde(rename = "c")]
-    content: MessageType,
-    #[serde(skip_serializing)]
-    #[serde(default)]
-    animation: bool,
-    #[serde(default = "Vec::new")]
-    #[serde(rename = "r")]
-    reactions: Vec<(ui::assets::Emoji, Vec<Option<Uuid>>)>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct Session {
-    session_name: String,
-    avatar: String,
-    participants_ids: Vec<Uuid>,
-    // 下次 push 消息时应该插入的编号，然后 +1
-    id: u64,
-}
-
-impl Session {
-    fn refresh_avatar(&mut self, operators: &fnv::FnvHashMap<Uuid, Operator>) {
-        self.avatar = match self.participants_ids.as_slice() {
-            [participant_id] => operators
-                .get(participant_id)
-                .filter(|operator| operator.active)
-                .map(|operator| operator.avatar.clone())
-                .unwrap_or_default(),
-            _ => String::new(),
-        };
-    }
-}
-
-/// 决定输入框的行为。
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
-enum InputAreaMode {
-    /// 正常模式：消息将被正常发送到会话末尾
-    #[default]
-    Normal,
-
-    /// 插入模式：将在给定的 id 之前插入
-    Insert { id: u64 },
-
-    /// 修改模式
-    Modify { id: u64 },
-}
+mod operator;
+mod session;
+mod shared;
 
 #[derive(Clone, Debug)]
 struct BakerState {
-    operators: Signal<fnv::FnvHashMap<Uuid, Operator>>,
-    sessions: Signal<fnv::FnvHashMap<Uuid, Session>>,
-    current_session: Signal<Option<Uuid>>,
-    need_to_scroll_down: Signal<bool>,
     dialogs: Signal<fnv::FnvHashMap<Uuid, Element>>,
-    messages: Signal<Option<collections::BTreeMap<u64, Message>>>,
-    input_area_mode: Signal<InputAreaMode>,
 }
 
 #[derive(Debug, Clone, Routable, PartialEq)]
@@ -191,66 +65,13 @@ fn main() {
 }
 
 fn provide_baker_state() {
-    let (perlica_uuid, session_uuid) = (Uuid::new_v4(), Uuid::new_v4());
-
-    let default_operators = || {
-        let mut operators = fnv::FnvHashMap::default();
-        operators.insert(
-            perlica_uuid,
-            Operator {
-                name: "Perlica".to_owned(),
-                avatar: "perlica".to_owned(),
-                active: true,
-            },
-        );
-        operators.insert(
-            Uuid::new_v4(),
-            Operator {
-                name: "Chen Qianyu".to_owned(),
-                avatar: "chenqy".to_owned(),
-                active: true,
-            },
-        );
-        operators
-    };
-
-    let default_sessions = || {
-        let mut sessions = fnv::FnvHashMap::default();
-        sessions.insert(
-            session_uuid,
-            Session {
-                session_name: "Perlica".to_owned(),
-                avatar: String::new(),
-                participants_ids: vec![perlica_uuid],
-                id: 0u64,
-            },
-        );
-        sessions
-    };
-
-    let operators = utils::get_item_or_default("operators", default_operators);
-    let sessions = utils::get_item_or_default("sessions", default_sessions);
-    let current_session = use_signal(|| None);
-    let operators = use_signal(|| operators);
-    let sessions = use_signal(|| sessions);
-    let need_to_scroll_down = use_signal(|| false);
     let dialogs = use_signal(fnv::FnvHashMap::default);
-    let messages = use_signal(|| None);
-    let input_area_mode = use_signal(|| InputAreaMode::Normal);
 
-    use_context_provider(|| BakerState {
-        operators,
-        sessions,
-        current_session,
-        need_to_scroll_down,
-        dialogs,
-        messages,
-        input_area_mode,
-    });
+    use_context_provider(|| BakerState { dialogs });
 }
 
 fn provide_settings() {
-    let image = use_signal(|| utils::get_item_or_default("wallpaper", || None));
+    let image = use_signal(|| shared::utils::get_item_or_default("wallpaper", || None).unwrap_or(None));
 
     use_context_provider(|| settings::state::SettingsState { image });
 }
@@ -259,16 +80,12 @@ fn provide_settings() {
 fn App() -> Element {
     provide_baker_state();
     provide_settings();
-    let _database = use_resource(|| async { database::open_db().await });
+    crate::session::view_model::input_view_model::InputViewModel::use_input_view_model_provider();
+    crate::session::view_model::session_view_model::SessionViewModel::use_session_view_model_provider().unwrap();
+    crate::session::view_model::session_view_model::SessionUIViewModel::use_session_ui_view_model_provider();
+    crate::operator::view_model::OperatorViewModel::use_operator_view_model_provider().unwrap();
 
-    let baker_state = use_context::<BakerState>();
-    use_effect(move || {
-        let operators = baker_state.operators.read();
-        let sessions = baker_state.sessions.read();
-
-        utils::set_item("operators", &*operators);
-        utils::set_item("sessions", &*sessions);
-    });
+    let _database = use_resource(|| async { shared::database::open_db().await });
 
     let font_face = format!(
         r#"
@@ -360,7 +177,7 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: SELECTOR_CSS }
         document::Link { rel: "stylesheet", href: MENU_CSS }
 
-        if database::is_ready() {
+        if shared::database::is_ready() {
             Router::<Route> {}
         } else {
             div { id: "database-loading", class: "flex", "加载数据库" }

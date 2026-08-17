@@ -1,3 +1,5 @@
+use crate::{operator::view_model::OperatorViewModel, session::view_model::session_view_model::SessionViewModel};
+
 use super::assets;
 use dioxus::prelude::*;
 use strum::VariantArray;
@@ -199,19 +201,24 @@ pub(crate) fn Menu(groups: Vec<MenuGroup>, on_close: EventHandler, x: f64, y: f6
 pub(crate) fn ReactionMenu(
     session_uuid: Uuid,
     /// on_confirm 中不需要调用 close 代码，因为在组件中会自动调用 on_close
-    on_confirm: EventHandler<(Vec<Option<Uuid>>, assets::Emoji)>,
+    on_confirm: EventHandler<(Vec<Option<Uuid>>, crate::shared::assets::Emoji)>,
     on_close: EventHandler,
     x: f64,
     y: f64,
 ) -> Element {
-    let baker = use_context::<crate::BakerState>();
-    let participants = baker
-        .sessions
+    let operator_view_model = use_context::<OperatorViewModel>();
+    let operators = operator_view_model.operator_repository;
+
+    let session_view_model = use_context::<SessionViewModel>();
+    let sessions = session_view_model.sessions;
+
+    let participants = sessions
+        .read()
         .get(&session_uuid)
         .unwrap()
-        .participants_ids
+        .participants_ids()
         .iter()
-        .map(|x| (Some(*x), baker.operators.get(x).unwrap().name.clone()))
+        .map(|x| (Some(*x), operators.read().get(*x).unwrap().name().clone()))
         .chain(std::iter::once((None, String::from("管理员"))))
         .collect::<Vec<_>>();
 
@@ -272,7 +279,7 @@ pub(crate) fn ReactionMenu(
 
                 div { class: "_reaction_menu_main",
                     div { class: "_reaction_menu_emojis",
-                        for emoji in assets::Emoji::VARIANTS {
+                        for emoji in crate::shared::assets::Emoji::VARIANTS {
                             button {
                                 class: if emoji_selected() == Some(*emoji) { "_reaction_menu_emojis_button _selected" } else { "_reaction_menu_emojis_button" },
                                 onclick: move |_| {
@@ -313,7 +320,7 @@ pub(crate) fn ReactionMenu(
                         on_close.call(());
                     },
 
-                    img { src: assets::icons::ADD_REACTION_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48 }
+                    img { src: crate::shared::assets::icons::ADD_REACTION_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48 }
 
                     "确定"
                 }

@@ -1,4 +1,5 @@
 use super::state::SettingsState;
+use crate::panic_try;
 
 use dioxus::{prelude::*, web::WebFileExt as _};
 use uuid::Uuid;
@@ -24,15 +25,14 @@ pub(crate) fn ImageSetting(object_name: String, on_change: EventHandler<Uuid>, u
                             spawn(async move {
                                 with_input_disabled.set(true);
                                 let uuid = Uuid::new_v4();
-                                crate::database::save_multimedia(uuid, file.into()).await.unwrap();
-
+                                crate::shared::database::save_multimedia(uuid, file.into())
+                                    .await
+                                    .unwrap();
                                 if let Some(uuid) = uuid_remaining() {
-                                    crate::database::remove_multimedia(uuid).await.unwrap();
+                                    crate::shared::database::remove_multimedia(uuid).await.unwrap();
                                 }
-
                                 uuid_remaining.set(Some(uuid));
                                 with_input_disabled.set(false);
-
                                 on_change.call(uuid);
                             });
                         }
@@ -51,7 +51,7 @@ pub(crate) fn Settings(on_close: EventHandler) -> Element {
     use_effect(move || {
         settings_state.image.read();
 
-        crate::utils::set_item("wallpaper", &(settings_state.image)());
+        panic_try!(crate::shared::utils::set_item("wallpaper", &(settings_state.image)()));
     });
 
     rsx! {

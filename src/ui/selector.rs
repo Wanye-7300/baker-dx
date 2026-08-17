@@ -1,13 +1,16 @@
 use dioxus::prelude::*;
 use uuid::Uuid;
 
+use crate::operator::model::*;
+use crate::session::view_model::input_view_model::*;
+
 #[component]
 pub(crate) fn Selector(
     kv: Vec<(Option<Uuid>, String)>,
     title: Option<&'static str>,
     message_type_selector: Option<bool>,
     additional_class: Option<&'static str>,
-    func: EventHandler<(Option<super::InputAreaMessageType>, crate::Sender)>,
+    func: EventHandler<(Option<InputAreaMessageType>, Sender)>,
     on_close: EventHandler,
 ) -> Element {
     let message_type_selector = message_type_selector.unwrap_or_default();
@@ -36,17 +39,17 @@ pub(crate) fn Selector(
             if message_type_selector {
                 h3 { "发送为……" }
                 for (k , v) in vec![
-                    (super::InputAreaMessageType::HorizontalBreak, "分隔线".to_string()),
-                    (super::InputAreaMessageType::State, "“状态”".to_string()),
+                    (InputAreaMessageType::HorizontalBreak, "分隔线".to_string()),
+                    (InputAreaMessageType::State, "“状态”".to_string()),
                     (
-                        super::InputAreaMessageType::StateWithHorizontalLine,
+                        InputAreaMessageType::StateWithHorizontalLine,
                         "“状态”（带分隔符）".to_string(),
                     ),
                 ]
                 {
                     button {
                         key: "{k:?}",
-                        onclick: move |_| func.call((Some(k), crate::Sender::None)),
+                        onclick: move |_| func.call((Some(k), Sender::None)),
                         {v.to_string()}
                     }
                 }
@@ -57,7 +60,7 @@ pub(crate) fn Selector(
             for (k , uuid , v) in kv {
                 button {
                     key: "{k}",
-                    onclick: move |_| func.call((None, crate::Sender::from_optional_uuid(uuid))),
+                    onclick: move |_| func.call((None, Sender::from_optional_uuid(uuid))),
                     {v.to_string()}
                 }
             }

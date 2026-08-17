@@ -171,18 +171,3 @@ impl From<Emoji> for Asset {
         }
     }
 }
-
-pub(crate) fn get_avatar(id: &str) -> Asset {
-    CHARACTERS_AVATARS
-        .get(id)
-        .copied()
-        .unwrap_or(CHARACTERS_AVATARS["none"])
-}
-
-pub(crate) fn get_group_avatar(id: &str) -> Asset {
-    if id.is_empty() {
-        ICON_ROUND_SNS_ENDFIELD_GROUP_A
-    } else {
-        get_avatar(id)
-    }
-}

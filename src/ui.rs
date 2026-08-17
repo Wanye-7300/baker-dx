@@ -1,10 +1,18 @@
+use crate::operator::model::*;
+use crate::operator::view_model::OperatorViewModel;
+use crate::session::model::*;
+use crate::session::view::session::*;
+use crate::session::view::session_list::*;
+use crate::session::view_model::session_view_model::SessionViewModel;
+use crate::shared::assets;
+use crate::view_try;
+
 use dioxus::prelude::*;
+use fnv::FnvHashSet;
 use uuid::Uuid;
 
-pub(crate) mod assets;
 pub(crate) mod components;
-mod session;
-mod session_cards;
+pub(crate) mod selector;
 
 struct ObjectUrl(String);
 
@@ -19,10 +27,10 @@ pub(super) fn Baker() -> Element {
     let baker_state = use_context::<crate::BakerState>();
     let dialogs = baker_state.dialogs.read();
 
-    let session_name = use_signal(String::new);
-    let participants_ids = use_signal(fnv::FnvHashSet::default);
-
     let mut with_settings_open = use_signal(|| false);
+
+    let session_name = use_signal(String::new);
+    let participants_ids = use_signal(FnvHashSet::default);
 
     rsx! {
         div { id: "app", class: "flex flex-column",
@@ -46,8 +54,8 @@ pub(super) fn Baker() -> Element {
                 }
             }
             div { id: "main-content", class: "flex flex-row",
-                session_cards::SessionCards { session_name, participants_ids }
-                session::SessionUI {}
+                SessionList { session_name, participants_ids }
+                SessionUI {}
             }
         }
 
@@ -63,7 +71,10 @@ pub(super) fn Baker() -> Element {
             }
         }
 
-        if let Some(uuid) = crate::utils::get_item_or_default("wallpaper", || None::<Uuid>) {
+        if let Some(uuid) = view_try!(
+            crate ::shared::utils::get_item_or_default("wallpaper", || None::< Uuid >,)
+        )
+        {
             Image { id: "background-image", uuid }
         }
     }
@@ -78,7 +89,7 @@ pub(crate) fn Image(
         let uuid = uuid();
 
         async move {
-            let blob = crate::database::get_multimedia(uuid)
+            let blob = crate::shared::database::get_multimedia(uuid)
                 .await
                 .map_err(|error| format!("读取图片失败：{error}"))?
                 .ok_or_else(|| "图片数据不存在".to_string())?;
@@ -103,13 +114,14 @@ pub(crate) fn Image(
 
 #[component]
 pub(crate) fn ParticipantsSelection(participants_ids: Signal<fnv::FnvHashSet<Uuid>>) -> Element {
-    let baker_state = use_context::<crate::BakerState>();
-    let operators = baker_state
-        .operators
+    let operator_view_model = use_context::<OperatorViewModel>();
+    let operators = operator_view_model.operator_repository;
+
+    let operators = operators
         .read()
-        .iter()
-        .filter(|(_, operator)| operator.active)
-        .map(|(id, operator)| (*id, operator.clone()))
+        .iterator()
+        .filter(|(_, operator)| operator.activity())
+        .map(|(id, operator)| (id, operator.clone()))
         .collect::<Vec<_>>();
 
     rsx! {
@@ -130,7 +142,7 @@ pub(crate) fn ParticipantsSelection(participants_ids: Signal<fnv::FnvHashSet<Uui
                         },
                     }
                     label { r#for: k.to_string(),
-                        {v.name.clone()}
+                        {v.name().clone()}
                         {"   "}
                         {k.to_string()}
                     }
@@ -194,6 +206,10 @@ pub(crate) fn DialogNewSession(
     uuid: Uuid,
 ) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
+    let session_view_model = use_context::<SessionViewModel>();
+    let mut sessions = session_view_model.sessions;
+    let operator_view_model = use_context::<OperatorViewModel>();
+    let operators = operator_view_model.operator_repository;
 
     rsx! {
         Dialog {
@@ -207,32 +223,26 @@ pub(crate) fn DialogNewSession(
                     return;
                 }
 
-                baker_state
-                    .sessions
+                sessions
                     .write()
-                    .insert(
-                        Uuid::new_v4(),
-                        crate::Session {
+                    .push_session(
+                        Session::new(
                             session_name,
-                            avatar: match participants_ids.read().iter().count() {
+                            match participants_ids.read().iter().count() {
                                 1 => {
-                                    baker_state
-                                        .operators
-                                        .get(participants_ids.read().iter().next().unwrap())
+                                    operators
+                                        .read()
+                                        .get(*participants_ids.read().iter().next().unwrap())
                                         .unwrap()
-                                        .avatar
+                                        .get_avatar_originally()
                                         .clone()
                                 }
-                                _ => String::new(),
+                                _ => Avatar::None,
                             },
-                            participants_ids: participants_ids
-                                .read()
-                                .iter()
-                                .cloned()
-                                .collect::<Vec<Uuid>>(),
-                            id: 0,
-                        },
-                    );
+                            participants_ids.read().iter().cloned().collect::<Vec<Uuid>>(),
+                        ),
+                    )
+                    .unwrap();
                 baker_state.dialogs.write().remove(&uuid);
                 participants_ids.clear();
             },
@@ -278,7 +288,11 @@ pub(crate) fn DialogNewSession(
 
 #[component]
 pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
-    let mut baker_state = use_context::<crate::BakerState>();
+    let operator_view_model = use_context::<OperatorViewModel>();
+    let mut operators = operator_view_model.operator_repository;
+    let session_view_model = use_context::<SessionViewModel>();
+    let sessions = session_view_model.sessions;
+
     let mut name = use_signal(String::new);
     // 若是空，则为未选择头像
     let mut new_operator_avatar_id = use_signal(String::new);
@@ -297,7 +311,7 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                     span { class: "flex flex-row",
                         img {
                             class: "new-operator-avatar",
-                            src: assets::get_avatar(new_operator_avatar_id.read().as_ref()),
+                            src: Avatar::Preset(new_operator_avatar_id()).to_asset_operator(),
                         }
                         div { class: "",
                             label { "干员名" }
@@ -332,17 +346,12 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                         onclick: move |_| {
                             let trimmed = name.read().trim().to_owned();
                             if !trimmed.is_empty() {
-                                baker_state
-                                    .operators
+                                operators
                                     .write()
-                                    .insert(
-                                        Uuid::new_v4(),
-                                        crate::Operator {
-                                            name: trimmed,
-                                            avatar: new_operator_avatar_id(),
-                                            active: true,
-                                        },
-                                    );
+                                    .push_operator(
+                                        Operator::new(trimmed, Avatar::Preset(new_operator_avatar_id())),
+                                    )
+                                    .unwrap();
                                 name.write().clear();
                             }
                         },
@@ -353,30 +362,20 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
 
                     // 已有干员列表
                     div { class: "participants",
-                        for (id , op) in baker_state.operators.read().iter().filter(|(_, operator)| operator.active) {
+                        for (id , op) in operators.read().iterator() {
                             div { class: "participant participant-setting flex flex-row",
-                                span { class: "flex-1", "{op.name}" }
+                                span { class: "flex-1", "{op.name()}" }
                                 span { class: "actions-participant-setting",
                                     span {
                                         onclick: {
-                                            let id = *id;
                                             move |_| {
-                                                if let Some(operator) = baker_state.operators.write().get_mut(&id) {
-                                                    operator.active = false;
-                                                }
-
-                                                let operators = baker_state.operators.read();
-                                                for session in baker_state.sessions.write().values_mut() {
-                                                    session.participants_ids.retain(|participant_id| *participant_id != id);
-                                                    session.refresh_avatar(&operators);
-                                                }
+                                                operators.write().deactivate_operator(id, sessions.into()).unwrap();
                                             }
                                         },
                                         "停用干员"
                                     }
                                     span {
                                         onclick: {
-                                            let id = *id;
                                             move |_| {
                                                 edit_selected_operator_id.set(Some(id));
                                             }
@@ -385,7 +384,7 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                                     }
                                 }
                                 if let Some(selected_id) = edit_selected_operator_id() {
-                                    if selected_id == *id {
+                                    if selected_id == id {
                                         div { class: "edit-operator",
                                             input {
                                                 r#type: "text",
@@ -402,14 +401,13 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                                             }
                                             button {
                                                 onclick: {
-                                                    let id = *id;
                                                     move |_| {
                                                         // TODO: Unicode 规范化
                                                         edit_selected_operator_id.set(None);
                                                         if edit_selected_operator_name.is_empty() {
                                                             return;
                                                         }
-                                                        baker_state.operators.get_mut(&id).unwrap().name = edit_selected_operator_name();
+                                                        operators.write().rename(id, edit_selected_operator_name()).unwrap();
                                                         edit_selected_operator_name.clear();
                                                     }
                                                 },

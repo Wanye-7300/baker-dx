@@ -1,11 +1,12 @@
 use std::collections;
 
-use dioxus::prelude::*;
+use crate::session::model::*;
 
+use dioxus::prelude::*;
 use futures::StreamExt;
 use indexed_db_futures::prelude::*;
 use indexed_db_futures::transaction::TransactionMode;
-use indexed_db_futures::{database::Database, KeyRange};
+use indexed_db_futures::{KeyRange, database::Database};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use web_sys::js_sys::{Object, Reflect};
@@ -21,7 +22,7 @@ pub(crate) struct MessageWrapper {
     pub(crate) message_id: u64,
 
     #[serde(flatten)]
-    pub(crate) message: crate::Message,
+    pub(crate) message: Message,
 }
 
 pub(crate) async fn open_db() -> anyhow::Result<()> {
@@ -170,7 +171,7 @@ pub(crate) async fn modify_message(message: MessageWrapper) -> indexed_db_future
 
 pub(crate) async fn get_messages(
     session_uuid: Uuid,
-) -> indexed_db_futures::Result<collections::BTreeMap<u64, crate::Message>> {
+) -> indexed_db_futures::Result<collections::BTreeMap<u64, Message>> {
     let db = {
         let db = DB.read();
         db.as_ref().cloned().expect("Database not initialized")
@@ -193,7 +194,7 @@ pub(crate) async fn get_messages(
     let records = stream
         .map(|x| x.unwrap())
         .map(|x| (x.message_id, x.message))
-        .collect::<collections::BTreeMap<u64, crate::Message>>()
+        .collect::<collections::BTreeMap<u64, Message>>()
         .await;
 
     Ok(records)
@@ -218,7 +219,7 @@ pub(crate) async fn delete_message(session_uuid: Uuid, message_id: u64) -> index
     if let Some(message) = object_store.get(key_range.clone()).serde()?.await? {
         let message: MessageWrapper = message;
 
-        if let crate::MessageType::Image(uuid) = message.message.content {
+        if let MessageType::Image(uuid) = message.message.content() {
             object_store_multimedia.delete(KeyRange::Only(uuid)).serde()?.await?;
         }
 
@@ -256,11 +257,11 @@ pub(crate) async fn delete_session_messages(session_uuid: Uuid) -> indexed_db_fu
         let messages = stream
             .map(|x| x.unwrap())
             .map(|x| x.message)
-            .collect::<Vec<crate::Message>>()
+            .collect::<Vec<Message>>()
             .await;
 
         for message in messages {
-            if let crate::MessageType::Image(uuid) = message.content {
+            if let MessageType::Image(uuid) = message.content() {
                 object_store_multimedia.delete(KeyRange::Only(uuid)).serde()?.await?;
             }
         }

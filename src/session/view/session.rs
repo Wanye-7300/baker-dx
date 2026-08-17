@@ -1,193 +1,113 @@
 use std::iter;
 
+use crate::operator::model::*;
+use crate::operator::view_model::*;
+use crate::panic_try;
+use crate::session::model::*;
+use crate::session::repository::*;
+use crate::session::view_model::input_view_model::*;
+use crate::session::view_model::session_view_model::*;
+use crate::shared::assets;
+use crate::shared::assets::ICON_ROUND_CHR_0003_ENDMINF;
+use crate::shared::assets::icons;
+use crate::shared::assets::stickers;
+use crate::shared::database;
+use crate::ui::components::*;
+use crate::ui::selector;
+use crate::view_try;
+
 use dioxus::{prelude::*, web::WebFileExt};
 use strum::VariantArray;
 use uuid::Uuid;
 
-use crate::Sender;
-use crate::ui::assets::{icons, stickers};
-use crate::ui::components::*;
-
-pub(crate) mod selector;
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub(crate) enum InputAreaMessageType {
-    #[default]
-    Text,
-    Image(Uuid),
-    HorizontalBreak,
-    State,
-    StateWithHorizontalLine,
-    Sticker(super::assets::stickers::Stickers),
-}
-
-impl TryFrom<&str> for InputAreaMessageType {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &str) -> std::prelude::v1::Result<Self, Self::Error> {
-        match value {
-            "a" => Ok(Self::Text),
-            "c" => Ok(Self::HorizontalBreak),
-            "d" => Ok(Self::State),
-            "e" => Ok(Self::StateWithHorizontalLine),
-            _ => Err(anyhow::anyhow!("Unknown Parameter")),
-        }
-    }
-}
+type ActionParameter = (
+    u64,
+    MessageType,
+    Vec<(crate::shared::assets::Emoji, Vec<Option<Uuid>>)>,
+    bool,
+);
+type ProcessedMessage = (u64, MessageType, Vec<(assets::Emoji, Vec<Option<Uuid>>)>, bool);
 
 #[component]
-pub(super) fn SessionUI() -> Element {
-    let mut baker_state = use_context::<crate::BakerState>();
-    let sessions = baker_state.sessions;
-    let current_session = baker_state.current_session;
+pub(crate) fn SessionUI() -> Element {
+    let session_view_model = use_context::<SessionViewModel>();
+    let session_ui_view_model = use_context::<SessionUIViewModel>();
+    let input_view_model = use_context::<InputViewModel>();
 
-    let with_sender_selector_message_type = use_signal(|| true);
-    let with_sender_selector_open = use_signal(|| false);
-    let with_more_menu_open = use_signal(|| false);
-    let with_stickers_menu_open = use_signal(|| false);
+    let sessions = session_view_model.sessions;
+    let current_session = session_view_model.message_repository.read().current_session();
+    let message_repository = session_view_model.message_repository;
 
-    let mut with_message_actions_menu_open = use_signal(|| None);
-    let mut with_reaction_menu_open = use_signal(|| None);
+    let with_more_menu_open = session_ui_view_model.with_more_menu_open;
+    let with_stickers_menu_open = session_ui_view_model.with_stickers_menu_open;
+    let mut with_message_actions_menu_open = session_ui_view_model.with_message_actions_menu_open;
+    let mut with_reaction_menu_open = session_ui_view_model.with_reaction_menu_open;
+    let mut need_to_scroll_down = session_ui_view_model.need_to_scroll_down;
 
-    let mut input_area_message_type = use_signal(InputAreaMessageType::default);
-    let mut input_area_text = use_signal(String::new);
+    let mut input_area_message_type = input_view_model.input_area_message_type;
+    let mut input_area_text = input_view_model.input_area_text;
+    let mut input_area_mode = input_view_model.input_area_mode;
 
     let submit = move |sender: Sender| {
         if input_area_message_type() == InputAreaMessageType::Text && input_area_text.is_empty() {
             return;
         }
 
-        let mut sessions = baker_state.sessions;
-        let current_session = baker_state.current_session.unwrap();
-
-        let insert_id = sessions.read().get(&current_session).unwrap().id;
-
-        let message = crate::Message {
+        let message = Message::new(
             sender,
-            content: match input_area_message_type() {
-                InputAreaMessageType::Text => crate::MessageType::Text(input_area_text()),
-                InputAreaMessageType::Image(uuid) => crate::MessageType::Image(uuid),
-                InputAreaMessageType::HorizontalBreak => crate::MessageType::HorizontalBreak,
-                InputAreaMessageType::State => crate::MessageType::State(input_area_text()),
+            match input_area_message_type() {
+                InputAreaMessageType::Text => MessageType::Text(input_area_text()),
+                InputAreaMessageType::Image(uuid) => MessageType::Image(uuid),
+                InputAreaMessageType::HorizontalBreak => MessageType::HorizontalBreak,
+                InputAreaMessageType::State => MessageType::State(input_area_text()),
                 InputAreaMessageType::StateWithHorizontalLine => {
-                    crate::MessageType::StateWithHorizontalLine(input_area_text())
+                    MessageType::StateWithHorizontalLine(input_area_text())
                 }
-                InputAreaMessageType::Sticker(sticker) => crate::MessageType::Sticker(sticker),
+                InputAreaMessageType::Sticker(sticker) => MessageType::Sticker(sticker),
             },
-            animation: true,
-            reactions: vec![],
-        };
-
-        let message_wrapper = crate::database::MessageWrapper {
-            session_uuid: current_session,
-            message_id: insert_id,
-            message: message.clone(),
-        };
-
-        let mode = *baker_state.input_area_mode.read();
+        );
 
         spawn(async move {
-            match mode {
-                crate::InputAreaMode::Normal => {
-                    sessions.write().get_mut(&current_session).unwrap().id += 1;
-                    crate::database::put_messages(vec![message_wrapper]).await.unwrap();
+            match input_area_mode() {
+                InputAreaMode::Normal => {
+                    panic_try!(MessageRepository::push(message_repository, message).await);
                 }
-                crate::InputAreaMode::Insert { id } => {
-                    let mut message_wrapper = message_wrapper;
-                    message_wrapper.message_id = id;
-                    let need_to_update = crate::database::insert_message(message_wrapper).await.unwrap();
-
-                    let mut sessions = baker_state.sessions;
-                    if need_to_update {
-                        sessions.write().get_mut(&current_session).unwrap().id += 1;
-                    }
+                InputAreaMode::Insert { id } => {
+                    panic_try!(MessageRepository::insert(message_repository, message, id).await);
+                    input_area_mode.set(InputAreaMode::Normal);
                 }
-                crate::InputAreaMode::Modify { id } => {
-                    let mut message_wrapper = message_wrapper;
-                    message_wrapper.message_id = id;
-                    crate::database::modify_message(message_wrapper).await.unwrap();
+                InputAreaMode::Modify { id } => {
+                    panic_try!(MessageRepository::modify(message_repository, id, message).await);
+                    input_area_mode.set(InputAreaMode::Normal);
                 }
             }
         });
 
-        let mut messages = baker_state.messages.write();
-        let messages = messages.as_mut().unwrap();
-
-        for (_, v) in messages.iter_mut().rev() {
-            // TODO: 优化
-            v.animation = false;
-        }
-
-        match mode {
-            crate::InputAreaMode::Normal => {
-                messages.insert(insert_id, message);
-            }
-            crate::InputAreaMode::Insert { id } => {
-                if messages.contains_key(&id) {
-                    let others = messages.split_off(&id);
-                    messages.insert(id, message);
-                    for (k, v) in others {
-                        messages.insert(k + 1, v);
-                    }
-                } else {
-                    messages.insert(id, message);
-                }
-                baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
-            }
-            crate::InputAreaMode::Modify { id } => {
-                messages.remove(&id);
-                messages.insert(id, message);
-                baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
-            }
-        }
-
         input_area_text.set(String::new());
         input_area_message_type.set(InputAreaMessageType::Text);
-        *baker_state.need_to_scroll_down.write() = true;
+        *need_to_scroll_down.write() = true;
     };
 
-    if current_session.read().is_some() {
+    if current_session.is_some() {
         // TODO: 虽然 current_session.read().unwrap() 正常情况下是保证正确的 —— 但是谁知道呢？SessionMainContent 与
         // InputArea 同
-        let uuid = current_session.read().unwrap();
-        let current_session_name = sessions.read()[&uuid].session_name.clone();
+        let uuid = current_session.unwrap();
+        let current_session_name = sessions.read();
+        let current_session_name = view_try!(current_session_name.get(&uuid)).session_name();
 
         rsx! {
             div { id: "session", class: "flex flex-column",
                 div { class: "flex flex-column", id: "session-header",
-                    span { {current_session_name} }
+                    span { {current_session_name.to_string()} }
                 }
                 div { id: "session-main", class: "flex flex-column",
-                    SessionMainContent {
-                        on_open_actions_menu: move |information| {
-                            with_message_actions_menu_open.set(Some(information));
-                        },
-                    }
-                    InputArea {
-                        input_area_message_type,
-                        input_area_text,
-                        with_more_menu_open,
-                        with_stickers_menu_open,
-                        with_sender_selector_message_type,
-                        with_sender_selector_open,
-                        on_submit: submit,
-                    }
+                    SessionMainContent {}
+                    InputArea { on_submit: submit }
                     if with_more_menu_open() {
-                        MoreMenu {
-                            current_session,
-                            with_more_menu_open,
-                            with_sender_selector_open,
-                            input_area_message_type,
-                            on_submit: submit,
-                        }
+                        MoreMenu { on_submit: submit }
                     }
                     if with_stickers_menu_open() {
-                        StickersMenu {
-                            input_area_message_type,
-                            with_stickers_menu_open,
-                            with_sender_selector_open,
-                            on_submit: submit,
-                        }
+                        StickersMenu { on_submit: submit }
                     }
                 }
                 img {
@@ -195,7 +115,7 @@ pub(super) fn SessionUI() -> Element {
                     src: crate::DECO_SNS_TWEET_DECORATE_10,
                 }
 
-                if let Some((session_uuid, message_id, x, y)) = with_message_actions_menu_open() {
+                if let Some(Action(_session_uuid, message_id, x, y)) = with_message_actions_menu_open() {
                     Menu {
                         groups: vec![
                             MenuGroup {
@@ -204,19 +124,12 @@ pub(super) fn SessionUI() -> Element {
                                     MenuItem {
                                         icon: Some(icons::DELETE_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
                                         label: String::from("删除"),
-                                        on_click: EventHandler::new(move |_| {
-                                            spawn(async move {
-                                                crate::database::delete_message(session_uuid, message_id)
-                                                    .await
-                                                    .unwrap();
-
-                                                let messages = baker_state.messages.as_mut();
-                                                messages.unwrap().remove(&message_id);
-
-                                                baker_state
-                                                    .input_area_mode
-                                                    .set(crate::InputAreaMode::Normal);
-                                            });
+                                        on_click: EventHandler::new(move |_| async move {
+                                            panic_try!(
+                                                MessageRepository::delete(message_repository, message_id).
+                                                await
+                                            );
+                                            input_area_mode.set(InputAreaMode::Normal);
                                         }),
                                     },
                                     MenuItem {
@@ -225,8 +138,7 @@ pub(super) fn SessionUI() -> Element {
                                         ),
                                         label: String::from("添加Reaction…"),
                                         on_click: EventHandler::new(move |_| {
-                                            with_reaction_menu_open
-                                                .set(with_message_actions_menu_open());
+                                            with_reaction_menu_open.set(with_message_actions_menu_open());
                                         }),
                                     },
                                     MenuItem {
@@ -235,9 +147,8 @@ pub(super) fn SessionUI() -> Element {
                                         ),
                                         label: String::from("在此前插入消息…"),
                                         on_click: EventHandler::new(move |_| {
-                                            baker_state
-                                                .input_area_mode
-                                                .set(crate::InputAreaMode::Insert {
+                                            input_area_mode
+                                                .set(InputAreaMode::Insert {
                                                     id: message_id,
                                                 });
                                         }),
@@ -246,9 +157,8 @@ pub(super) fn SessionUI() -> Element {
                                         icon: Some(icons::EDIT_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
                                         label: String::from("修改消息…"),
                                         on_click: EventHandler::new(move |_| {
-                                            baker_state
-                                                .input_area_mode
-                                                .set(crate::InputAreaMode::Modify {
+                                            input_area_mode
+                                                .set(InputAreaMode::Modify {
                                                     id: message_id,
                                                 });
                                         }),
@@ -264,34 +174,13 @@ pub(super) fn SessionUI() -> Element {
                     }
                 }
 
-                if let Some((session_uuid, message_id, x, y)) = with_reaction_menu_open() {
+                if let Some(Action(session_uuid, message_id, x, y)) = with_reaction_menu_open() {
                     ReactionMenu {
-                        on_confirm: move |(participants_ids_selected, emoji): (Vec<Option<Uuid>>, _)| {
-                            let mut message = baker_state.messages.as_mut().unwrap();
-                            let message = message
-                                .get_mut(&message_id)
-                                .unwrap();
-
-                            if let Some(index) = message.reactions.iter().position(|x| x.0 == emoji)
-                            {
-                                let ids_unlisted = participants_ids_selected
-                                    .iter()
-                                    .filter(|x| !message.reactions[index].1.contains(x))
-                                    .collect::<Vec<_>>();
-                                message.reactions[index].1.extend(ids_unlisted);
-                            } else {
-                                message.reactions.push((emoji, participants_ids_selected));
-                            }
-                            let message = message.clone();
-                            spawn(async move {
-                                crate::database::modify_message(crate::database::MessageWrapper {
-                                        session_uuid,
-                                        message_id,
-                                        message,
-                                    })
-                                    .await
-                                    .unwrap();
-                            });
+                        on_confirm: move |(participants_ids_selected, emoji): (Vec<Option<Uuid>>, _)| async move {
+                            panic_try!(
+                                MessageRepository::append_reaction(message_repository, message_id, (emoji,
+                                participants_ids_selected),). await
+                            );
                         },
                         session_uuid,
                         on_close: move |_| {
@@ -311,22 +200,23 @@ pub(super) fn SessionUI() -> Element {
 }
 
 #[component]
-fn SessionMainContent(
-    /// 会话 Uuid, 消息 id, clientX, clientY
-    on_open_actions_menu: EventHandler<(Uuid, u64, f64, f64)>,
-) -> Element {
-    let mut baker_state = use_context::<crate::BakerState>();
+fn SessionMainContent() -> Element {
+    let session_view_model = use_context::<SessionViewModel>();
+    let session_ui_view_model = use_context::<SessionUIViewModel>();
+    let operator_view_model = use_context::<OperatorViewModel>();
 
-    use_resource(move || async move {
-        let current_session_uuid = baker_state.current_session.read().unwrap();
-        let messages = crate::database::get_messages(current_session_uuid).await.unwrap();
-        baker_state.messages.set(Some(messages));
+    let message_repository = session_view_model.message_repository;
 
-        baker_state.need_to_scroll_down.set(true);
-    });
+    let mut need_to_scroll_down = session_ui_view_model.need_to_scroll_down;
+
+    // use_resource(move || async move {
+    //     let current_session_uuid = current_session.unwrap();
+
+    //     need_to_scroll_down.set(true);
+    // });
 
     use_effect(move || {
-        if !*baker_state.need_to_scroll_down.read() {
+        if !*need_to_scroll_down.read() {
             return;
         }
 
@@ -340,38 +230,40 @@ fn SessionMainContent(
             .await;
         });
 
-        *baker_state.need_to_scroll_down.write() = false;
+        *need_to_scroll_down.write() = false;
     });
 
     let mut messages = vec![];
 
-    if let Some(m) = baker_state.messages.read().as_ref() {
-        let mut iter = m.iter().peekable();
+    {
+        let m = message_repository.read();
+        let m = view_try!(m.iterator());
+
+        let mut iter = m.peekable();
 
         let mut temporary = vec![]; // 用于判断一组消息是不是一个人发的，然后塞进 messages
-        let mut sender_now = iter.peek().map(|x| x.1.sender);
+        let mut sender_now = iter.peek().map(|x| x.1.sender());
 
         loop {
             let peek = iter.peek();
-            if peek.is_some_and(|x| Some(x.1.sender) == sender_now && x.1.content.is_text_or_image()) {
+            if peek.is_some_and(|x| Some(x.1.sender()) == sender_now && x.1.content().is_text_or_image()) {
                 temporary.push((
-                    *peek.unwrap().0,
-                    peek.unwrap().1.content.clone(),
-                    peek.unwrap().1.reactions.clone(),
-                    peek.unwrap().1.animation,
+                    peek.unwrap().0,
+                    peek.unwrap().1.content().clone(),
+                    peek.unwrap().1.reactions().clone(),
+                    peek.unwrap().1.animation(),
                 ));
             } else {
                 if !temporary.is_empty() {
                     messages.push((
                         sender_now.is_some_and(|x| x.avatar_should_on_left()),
                         match sender_now {
-                            Some(Sender::Others(uuid)) => baker_state
-                                .operators
-                                .read()
-                                .get(&uuid)
-                                .map(|operator| crate::ui::assets::get_avatar(&operator.avatar))
-                                .unwrap_or_else(|| crate::ui::assets::get_avatar("none")),
-                            _ => crate::ui::assets::get_avatar("endministratorf"),
+                            Some(Sender::Others(uuid)) => {
+                                view_try!(operator_view_model.operator_repository.read().get(*uuid))
+                                    .get_avatar_originally()
+                                    .to_asset_operator()
+                            }
+                            _ => ICON_ROUND_CHR_0003_ENDMINF,
                         },
                         temporary,
                     ));
@@ -380,12 +272,12 @@ fn SessionMainContent(
                     break;
                 }
                 temporary = vec![(
-                    *peek.unwrap().0,
-                    peek.unwrap().1.content.clone(),
-                    peek.unwrap().1.reactions.clone(),
-                    peek.unwrap().1.animation,
+                    peek.unwrap().0,
+                    peek.unwrap().1.content().clone(),
+                    peek.unwrap().1.reactions().clone(),
+                    peek.unwrap().1.animation(),
                 )];
-                sender_now = peek.map(|x| x.1.sender);
+                sender_now = peek.map(|x| x.1.sender());
             }
             iter.next();
         }
@@ -394,28 +286,29 @@ fn SessionMainContent(
     rsx! {
         div { id: "session-main-content",
             for (avatar_on_left , avatar , messages) in messages {
-                MessageRow {
-                    avatar_on_left,
-                    avatar,
-                    messages,
-                    on_open_actions_menu,
-                }
+                MessageRow { avatar_on_left, avatar, messages }
             }
         }
     }
 }
 
 #[component]
-fn InputArea(
-    input_area_message_type: Signal<InputAreaMessageType>,
-    input_area_text: Signal<String>,
-    with_more_menu_open: Signal<bool>,
-    with_stickers_menu_open: Signal<bool>,
-    with_sender_selector_message_type: Signal<bool>,
-    with_sender_selector_open: Signal<bool>,
-    on_submit: EventHandler<crate::Sender>,
-) -> Element {
-    let mut baker_state = use_context::<crate::BakerState>();
+fn InputArea(on_submit: EventHandler<Sender>) -> Element {
+    let session_view_model = use_context::<SessionViewModel>();
+    let session_ui_view_model = use_context::<SessionUIViewModel>();
+    let input_view_model = use_context::<InputViewModel>();
+    let operator_view_model = use_context::<OperatorViewModel>();
+
+    let sessions = session_view_model.sessions;
+    let current_session = session_view_model.message_repository.read().current_session().unwrap();
+
+    let mut with_sender_selector_open = session_ui_view_model.with_sender_selector_open;
+    let mut with_more_menu_open = session_ui_view_model.with_more_menu_open;
+    let mut with_stickers_menu_open = session_ui_view_model.with_stickers_menu_open;
+
+    let mut input_area_message_type = input_view_model.input_area_message_type;
+    let mut input_area_text = input_view_model.input_area_text;
+    let mut input_area_mode = input_view_model.input_area_mode;
 
     let on_submit_click = move |evt: Event<MouseData>| match evt.modifiers().ctrl() {
         true => with_sender_selector_open.set(true),
@@ -429,7 +322,7 @@ fn InputArea(
     };
 
     use_effect(move || {
-        baker_state.current_session.read();
+        session_view_model.message_repository.read();
         with_more_menu_open.set(false);
     });
 
@@ -489,18 +382,17 @@ fn InputArea(
 
             if with_sender_selector_open() {
                 selector::Selector {
-                    kv: baker_state
-                        .sessions
-                        .get(&baker_state.current_session.unwrap())
-                        .unwrap()
-                        .participants_ids
+                    kv: view_try!(sessions.read().get(& current_session))
+                        .participants_ids()
                         .iter()
                         .filter_map(|x| {
-                            baker_state
-                                .operators
-                                .get(x)
-                                .filter(|operator| operator.active)
-                                .map(|operator| (Some(*x), operator.name.clone()))
+                            operator_view_model
+                                .operator_repository
+                                .read()
+                                .get(*x)
+                                .ok()
+                                .filter(|operator| operator.activity())
+                                .map(|operator| (Some(*x), operator.name().clone()))
                         })
                         .chain(iter::once((None, "管理员".to_owned())))
                         .collect(),
@@ -519,22 +411,22 @@ fn InputArea(
                 }
             }
 
-            if let crate::InputAreaMode::Insert { .. } = *baker_state.input_area_mode.read() {
+            if let InputAreaMode::Insert { .. } = *input_area_mode.read() {
                 div { id: "insert-mode-wrapper",
                     span { "插入模式" }
                     button {
                         onclick: move |_| {
-                            baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
+                            input_area_mode.set(InputAreaMode::Normal);
                         },
                         "×"
                     }
                 }
-            } else if let crate::InputAreaMode::Modify { .. } = *baker_state.input_area_mode.read() {
+            } else if let InputAreaMode::Modify { .. } = *input_area_mode.read() {
                 div { id: "insert-mode-wrapper", class: "modify-mode",
                     span { "修改模式" }
                     button {
                         onclick: move |_| {
-                            baker_state.input_area_mode.set(crate::InputAreaMode::Normal);
+                            input_area_mode.set(InputAreaMode::Normal);
                         },
                         "×"
                     }
@@ -545,24 +437,30 @@ fn InputArea(
 }
 
 #[component]
-fn MoreMenu(
-    current_session: Signal<Option<Uuid>>,
-    with_more_menu_open: Signal<bool>,
-    with_sender_selector_open: Signal<bool>,
-    input_area_message_type: Signal<InputAreaMessageType>,
-    on_submit: EventHandler<Sender>,
-) -> Element {
-    let mut baker_state = use_context::<crate::BakerState>();
-    let session_id = current_session.unwrap();
-    let session_name = baker_state.sessions.get(&session_id).unwrap().session_name.clone();
+fn MoreMenu(on_submit: EventHandler<Sender>) -> Element {
+    let session_view_model = use_context::<SessionViewModel>();
+    let session_ui_view_model = use_context::<SessionUIViewModel>();
+    let input_view_model = use_context::<InputViewModel>();
+    let operator_view_model = use_context::<OperatorViewModel>();
+
+    let mut sessions = session_view_model.sessions;
+    let current_session = session_view_model.message_repository.read().current_session().unwrap();
+    let mut message_repository = session_view_model.message_repository;
+    let session_name = sessions.read().get(&current_session).unwrap().session_name().clone();
+
+    let mut with_sender_selector_open = session_ui_view_model.with_sender_selector_open;
+    let mut with_more_menu_open = session_ui_view_model.with_more_menu_open;
+
+    let mut input_area_message_type = input_view_model.input_area_message_type;
+
     let participants_ids: Signal<fnv::FnvHashSet<Uuid>> = use_signal(|| {
-        baker_state
-            .sessions
-            .get(&session_id)
+        sessions
+            .read()
+            .get(&current_session)
             .unwrap()
-            .participants_ids
+            .participants_ids()
             .iter()
-            .cloned()
+            .copied()
             .collect()
     });
 
@@ -570,10 +468,10 @@ fn MoreMenu(
         let mut participant_ids = participants_ids.read().iter().copied().collect::<Vec<_>>();
         participant_ids.sort_unstable();
 
-        let operators = baker_state.operators.read();
-        if let Some(session) = baker_state.sessions.write().get_mut(&session_id) {
-            session.participants_ids = participant_ids;
-            session.refresh_avatar(&operators);
+        let operators = operator_view_model.operator_repository.read();
+        if let Ok(session) = sessions.write().get_mut(&current_session) {
+            session.set_participants_ids(participant_ids);
+            session.refresh_avatar(operators.operators());
         }
     });
 
@@ -583,7 +481,7 @@ fn MoreMenu(
 
             spawn(async move {
                 let uuid = Uuid::new_v4();
-                crate::database::save_multimedia(uuid, file.into()).await.unwrap();
+                database::save_multimedia(uuid, file.into()).await.unwrap();
                 input_area_message_type.set(InputAreaMessageType::Image(uuid));
                 // on_submit.call(None);
                 with_sender_selector_open.set(true);
@@ -591,8 +489,6 @@ fn MoreMenu(
             });
         }
     };
-
-    let mut animation_end = use_signal(|| false);
 
     rsx! {
         InputAreaMenu {
@@ -612,36 +508,35 @@ fn MoreMenu(
                 r#type: "text",
                 value: session_name.to_string(),
                 onchange: move |evt| {
-                    baker_state.sessions.write().get_mut(&session_id).unwrap().session_name = evt
-                        .value();
+                    sessions.write().get_mut(&current_session).unwrap().rename(evt.value());
                 },
                 {session_name.to_string()}
             }
             div { class: "more-menu-actions",
                 span {
-                    onclick: move |_| {
-                        baker_state.sessions.write().retain(|k, _| { *k != session_id });
-                        baker_state.current_session.set(None);
-                        wasm_bindgen_futures::spawn_local(async move {
-                            crate::database::delete_session_messages(session_id).await.unwrap();
-                        });
+                    onclick: move |_| async move {
+                        message_repository.write().clear();
+                        panic_try!(SessionRepository::delete_session(sessions, current_session). await);
                     },
                     "删除此会话（消息会永久消失！）"
                 }
             }
             h3 { "干员管理" }
-            super::ParticipantsSelection { participants_ids }
+            crate::ui::ParticipantsSelection { participants_ids }
         }
     }
 }
 
 #[component]
-fn StickersMenu(
-    input_area_message_type: Signal<InputAreaMessageType>,
-    with_stickers_menu_open: Signal<bool>,
-    with_sender_selector_open: Signal<bool>,
-    on_submit: EventHandler<Sender>,
-) -> Element {
+fn StickersMenu(on_submit: EventHandler<Sender>) -> Element {
+    let session_ui_view_model = use_context::<SessionUIViewModel>();
+    let input_view_model = use_context::<InputViewModel>();
+
+    let mut with_sender_selector_open = session_ui_view_model.with_sender_selector_open;
+    let mut with_stickers_menu_open = session_ui_view_model.with_stickers_menu_open;
+
+    let mut input_area_message_type = input_view_model.input_area_message_type;
+
     rsx! {
         InputAreaMenu {
             div { class: "stickers-menu",
@@ -664,52 +559,46 @@ fn StickersMenu(
 }
 
 #[component]
-fn MessageRow(
-    avatar_on_left: bool,
-    avatar: Asset,
-    messages: Vec<(
-        u64,
-        crate::MessageType,
-        Vec<(crate::ui::assets::Emoji, Vec<Option<Uuid>>)>,
-        bool,
-    )>,
-    /// 会话 Uuid, 消息 id, clientX, clientY
-    on_open_actions_menu: EventHandler<(Uuid, u64, f64, f64)>,
-) -> Element {
+fn MessageRow(avatar_on_left: bool, avatar: Asset, messages: Vec<ProcessedMessage>) -> Element {
+    let session_view_model = use_context::<SessionViewModel>();
+    let session_ui_view_model = use_context::<SessionUIViewModel>();
+
+    let current_session = session_view_model.message_repository.read().current_session().unwrap();
+    let mut with_reaction_menu_open = session_ui_view_model.with_reaction_menu_open;
+
     if messages.is_empty() {
         return rsx! {};
     }
 
-    let mut baker_state = use_context::<crate::BakerState>();
     let message_id = messages[0].0;
 
     let oncontextmenu = move |evt: Event<MouseData>| {
         evt.prevent_default();
         let position = evt.client_coordinates();
-        on_open_actions_menu.call((baker_state.current_session.unwrap(), message_id, position.x, position.y));
+        with_reaction_menu_open.set(Some(Action(current_session, message_id, position.x, position.y)));
     };
 
     match &messages[0].1 {
-        crate::MessageType::HorizontalBreak => rsx! {
+        MessageType::HorizontalBreak => rsx! {
             div { class: "horizontal-break",
                 span { oncontextmenu }
                 img { class: "hb-deco1", src: crate::DECO_SNS_TWEET_DECORATE_11 }
                 img { class: "hb-deco2", src: crate::LINE_SNS_TWEET_DECORATE }
             }
         },
-        crate::MessageType::State(txt) => rsx! {
+        MessageType::State(txt) => rsx! {
             div { class: "state", oncontextmenu,
                 span { {txt.to_string()} }
             }
         },
-        crate::MessageType::StateWithHorizontalLine(txt) => rsx! {
+        MessageType::StateWithHorizontalLine(txt) => rsx! {
             div { class: "state-with-hl", oncontextmenu,
                 span {}
                 span { {txt.to_string()} }
                 span {}
             }
         },
-        crate::MessageType::Text(_) | crate::MessageType::Image(_) | crate::MessageType::Sticker(_) => {
+        MessageType::Text(_) | MessageType::Image(_) | MessageType::Sticker(_) => {
             let avatar_left_class = if avatar_on_left {
                 "message-row-avatar message-row-avatar-background"
             } else {
@@ -737,7 +626,6 @@ fn MessageRow(
                                 key: "{message.0}",
                                 avatar_on_left,
                                 message,
-                                on_open_actions_menu,
                             }
                         }
                     }
@@ -754,24 +642,20 @@ fn MessageRow(
 }
 
 #[component]
-fn MessageBubble(
-    avatar_on_left: bool,
-    message: (
-        u64,
-        crate::MessageType,
-        Vec<(crate::ui::assets::Emoji, Vec<Option<Uuid>>)>,
-        bool,
-    ),
-    on_open_actions_menu: EventHandler<(Uuid, u64, f64, f64)>,
-) -> Element {
-    let mut baker_state = use_context::<crate::BakerState>();
+fn MessageBubble(avatar_on_left: bool, message: ActionParameter) -> Element {
+    let session_view_model = use_context::<SessionViewModel>();
+    let session_ui_view_model = use_context::<SessionUIViewModel>();
+    let operator_view_model = use_context::<OperatorViewModel>();
+
+    let current_session = session_view_model.message_repository.read().current_session().unwrap();
+    let mut with_message_actions_menu_open = session_ui_view_model.with_message_actions_menu_open;
 
     let message_id = message.0;
 
     let oncontextmenu = move |evt: Event<MouseData>| {
         evt.prevent_default();
         let position = evt.client_coordinates();
-        on_open_actions_menu.call((baker_state.current_session.unwrap(), message_id, position.x, position.y));
+        with_message_actions_menu_open.set(Some(Action(current_session, message_id, position.x, position.y)));
     };
 
     let bubble_class = if avatar_on_left {
@@ -791,7 +675,7 @@ fn MessageBubble(
     rsx! {
         div { class: "message-bubble-wrapper", oncontextmenu,
             match message.1 {
-                crate::MessageType::Text(txt) => rsx! {
+                MessageType::Text(txt) => rsx! {
                     RichText { class: bubble_class, text: txt,
                         if !message.2.is_empty() {
                             div { class: "message-reaction-wrapper",
@@ -804,7 +688,15 @@ fn MessageBubble(
                                                     .1
                                                     .iter()
                                                     .map(|x| match x {
-                                                        Some(x) => baker_state.operators.get(x).unwrap().name.clone(),
+                                                        Some(x) => {
+                                                            operator_view_model
+                                                                .operator_repository
+                                                                .read()
+                                                                .get(*x)
+                                                                .unwrap()
+                                                                .name()
+                                                                .clone()
+                                                        }
                                                         None => String::from("管理员"),
                                                     })
                                                     .collect::<Vec<String>>()
@@ -817,12 +709,12 @@ fn MessageBubble(
                         }
                     }
                 },
-                crate::MessageType::Image(uuid) => rsx! {
+                MessageType::Image(uuid) => rsx! {
                     span { class: "{bubble_class} message-bubble-image",
-                        super::Image { uuid }
+                        crate::ui::Image { uuid }
                     }
                 },
-                crate::MessageType::Sticker(sticker) => rsx! {
+                MessageType::Sticker(sticker) => rsx! {
                     div { class: "{bubble_class} message-bubble-sticker",
                         img { src: Asset::from(sticker) }
                     }
