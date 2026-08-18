@@ -311,7 +311,7 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                     span { class: "flex flex-row",
                         img {
                             class: "new-operator-avatar",
-                            src: Avatar::Preset(new_operator_avatar_id()).to_asset_operator(),
+                            src: if new_operator_avatar_id.is_empty() { Avatar::None.to_asset_operator() } else { Avatar::Preset(new_operator_avatar_id()).to_asset_operator() },
                         }
                         div { class: "",
                             label { "干员名" }
