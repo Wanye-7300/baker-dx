@@ -7,8 +7,8 @@ use crate::session::model::*;
 use crate::session::repository::*;
 use crate::session::view_model::input_view_model::*;
 use crate::session::view_model::session_view_model::*;
+use crate::settings::state::SettingsState;
 use crate::shared::assets;
-use crate::shared::assets::ICON_ROUND_CHR_0003_ENDMINF;
 use crate::shared::assets::icons;
 use crate::shared::assets::stickers;
 use crate::shared::database;
@@ -201,6 +201,8 @@ pub(crate) fn SessionUI() -> Element {
 
 #[component]
 fn SessionMainContent() -> Element {
+    let settings_state = use_context::<SettingsState>();
+
     let session_view_model = use_context::<SessionViewModel>();
     let session_ui_view_model = use_context::<SessionUIViewModel>();
     let operator_view_model = use_context::<OperatorViewModel>();
@@ -263,7 +265,7 @@ fn SessionMainContent() -> Element {
                                     .get_avatar_originally()
                                     .to_asset_operator()
                             }
-                            _ => ICON_ROUND_CHR_0003_ENDMINF,
+                            _ => settings_state.endministrator_avatar.read().to_asset_operator(),
                         },
                         temporary,
                     ));

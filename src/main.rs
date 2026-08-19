@@ -4,7 +4,7 @@
 //! > 这个分支用于重写整个项目，目前还处在早期开发中。
 //! > 目前仅支持 Web Platform。
 
-use crate::ui::Baker;
+use crate::{operator::model::Avatar, ui::Baker};
 use dioxus::prelude::*;
 use uuid::Uuid;
 
@@ -72,8 +72,15 @@ fn provide_baker_state() {
 
 fn provide_settings() {
     let image = use_signal(|| shared::utils::get_item_or_default("wallpaper", || None).unwrap_or(None));
+    let endministrator_avatar = use_signal(|| {
+        shared::utils::get_item_or_default("E_avatar", || Avatar::Preset("endministratorf".to_owned()))
+            .unwrap_or(Avatar::Preset("endministratorf".to_owned()))
+    });
 
-    use_context_provider(|| settings::state::SettingsState { image });
+    use_context_provider(|| settings::state::SettingsState {
+        image,
+        endministrator_avatar,
+    });
 }
 
 #[component]

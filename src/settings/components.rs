@@ -1,5 +1,5 @@
 use super::state::SettingsState;
-use crate::panic_try;
+use crate::{operator::model::Avatar, panic_try, shared::assets};
 
 use dioxus::{prelude::*, web::WebFileExt as _};
 use uuid::Uuid;
@@ -45,6 +45,34 @@ pub(crate) fn ImageSetting(object_name: String, on_change: EventHandler<Uuid>, u
 }
 
 #[component]
+pub(crate) fn AvatarSetting(object_name: String, on_change: EventHandler<Avatar>, value: Avatar) -> Element {
+    let mut avatar_id = use_signal(|| value.clone());
+
+    rsx! {
+        div { class: "settings-object",
+            span { {object_name} }
+
+            select {
+                name: "avatar",
+                id: "avatar-select",
+                onchange: move |evt| {
+                    avatar_id.set(Avatar::Preset(evt.value()));
+                    on_change.call(Avatar::Preset(evt.value()));
+                },
+                option { value: "", "选择头像" }
+                for k in assets::CHARACTERS_AVATARS.keys() {
+                    option {
+                        selected: if let Avatar::Preset(string) = value.clone() && *k == string { true },
+                        value: k,
+                        "{assets::CHARACTERS_NAME[k]}"
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
 pub(crate) fn Settings(on_close: EventHandler) -> Element {
     let mut settings_state = use_context::<SettingsState>();
 
@@ -52,6 +80,15 @@ pub(crate) fn Settings(on_close: EventHandler) -> Element {
         settings_state.image.read();
 
         panic_try!(crate::shared::utils::set_item("wallpaper", &(settings_state.image)()));
+    });
+
+    use_effect(move || {
+        settings_state.endministrator_avatar.read();
+
+        panic_try!(crate::shared::utils::set_item(
+            "E_avatar",
+            &(settings_state.endministrator_avatar)()
+        ));
     });
 
     rsx! {
@@ -76,6 +113,14 @@ pub(crate) fn Settings(on_close: EventHandler) -> Element {
                             info!("Wallpaper has been set to: {}", uuid);
                         },
                         uuid: (settings_state.image)(),
+                    }
+
+                    AvatarSetting {
+                        object_name: "SelfAvatar",
+                        on_change: move |avatar| {
+                            settings_state.endministrator_avatar.set(avatar);
+                        },
+                        value: (settings_state.endministrator_avatar)(),
                     }
                 }
             }
