@@ -331,20 +331,6 @@ fn InputArea(on_submit: EventHandler<Sender>) -> Element {
     rsx! {
         div { id: "input-area", class: input_area_style.to_string(),
             div { id: "input-area-input",
-                // input {
-                //     id: "input-area-input-input",
-                //     oninput: move |evt| { input_area_text.set(evt.value()) },
-                //     onkeypress: move |evt: Event<KeyboardData>| {
-                //         if evt.code() == Code::Enter {
-                //             match evt.modifiers().ctrl() {
-                //                 true => with_sender_selector_open.set(true),
-                //                 false => on_submit.call(Sender::Endministrator),
-                //             }
-                //         }
-                //     },
-                //     r#type: "text",
-                //     value: input_area_text,
-                // }
                 textarea {
                     id: "input-area-input-input",
                     oninput: move |evt| { input_area_text.set(evt.value()) },
