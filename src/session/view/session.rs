@@ -48,7 +48,7 @@ pub(crate) fn SessionUI() -> Element {
     let mut input_area_text = input_view_model.input_area_text;
     let mut input_area_mode = input_view_model.input_area_mode;
 
-    let submit = move |sender: Sender| {
+    let submit = move |sender: Sender| async move {
         if input_area_message_type() == InputAreaMessageType::Text && input_area_text.is_empty() {
             return;
         }
@@ -67,25 +67,23 @@ pub(crate) fn SessionUI() -> Element {
             },
         );
 
-        spawn(async move {
-            match input_area_mode() {
-                InputAreaMode::Normal => {
-                    panic_try!(MessageRepository::push(message_repository, message).await);
-                }
-                InputAreaMode::Insert { id } => {
-                    panic_try!(MessageRepository::insert(message_repository, message, id).await);
-                    input_area_mode.set(InputAreaMode::Normal);
-                }
-                InputAreaMode::Modify { id } => {
-                    panic_try!(MessageRepository::modify(message_repository, id, message).await);
-                    input_area_mode.set(InputAreaMode::Normal);
-                }
+        match input_area_mode() {
+            InputAreaMode::Normal => {
+                panic_try!(MessageRepository::push(message_repository, message).await);
+                need_to_scroll_down.set(true);
             }
-        });
+            InputAreaMode::Insert { id } => {
+                panic_try!(MessageRepository::insert(message_repository, message, id).await);
+                input_area_mode.set(InputAreaMode::Normal);
+            }
+            InputAreaMode::Modify { id } => {
+                panic_try!(MessageRepository::modify(message_repository, id, message).await);
+                input_area_mode.set(InputAreaMode::Normal);
+            }
+        }
 
         input_area_text.set(String::new());
         input_area_message_type.set(InputAreaMessageType::Text);
-        *need_to_scroll_down.write() = true;
     };
 
     if current_session.is_some() {

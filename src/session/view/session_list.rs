@@ -1,6 +1,9 @@
 use crate::{
     panic_try,
-    session::{repository::MessageRepository, view_model::session_view_model::SessionViewModel},
+    session::{
+        repository::MessageRepository,
+        view_model::session_view_model::{SessionUIViewModel, SessionViewModel},
+    },
     ui::DialogNewSession,
 };
 
@@ -42,9 +45,13 @@ pub(crate) fn SessionList(session_name: Signal<String>, participants_ids: Signal
 #[component]
 pub(crate) fn Card(uuid: Uuid, name: String, avatar: Asset) -> Element {
     let session_view_model = use_context::<SessionViewModel>();
+    let session_ui_view_model = use_context::<SessionUIViewModel>();
+
+    let mut need_to_scroll_down = session_ui_view_model.need_to_scroll_down;
 
     let on_choose_card = move |_| async move {
         panic_try!(MessageRepository::select(session_view_model.message_repository, uuid).await);
+        need_to_scroll_down.set(true);
     };
 
     rsx! {
