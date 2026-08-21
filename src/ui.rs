@@ -83,13 +83,6 @@ pub(super) fn Baker() -> Element {
 }
 
 #[component]
-pub(crate) fn Panic(msg: String) -> Element {
-    rsx! {
-        {msg}
-    }
-}
-
-#[component]
 pub(crate) fn Image(
     uuid: ReadSignal<Uuid>,
     #[props(extends = GlobalAttributes, extends = img)] attributes: Vec<Attribute>,

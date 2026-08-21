@@ -25,9 +25,6 @@ struct BakerState {
 enum Route {
     #[route("/")]
     Baker {},
-
-    #[route("/panic/:msg")]
-    Panic { msg: String },
 }
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
