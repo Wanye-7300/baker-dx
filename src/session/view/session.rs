@@ -1,4 +1,5 @@
 use std::iter;
+use std::time;
 
 use crate::operator::model::*;
 use crate::operator::view_model::*;
@@ -43,6 +44,7 @@ pub(crate) fn SessionUI() -> Element {
     let mut with_message_actions_menu_open = session_ui_view_model.with_message_actions_menu_open;
     let mut with_reaction_menu_open = session_ui_view_model.with_reaction_menu_open;
     let mut need_to_scroll_down = session_ui_view_model.need_to_scroll_down;
+    let mut replay_mode = session_ui_view_model.replay_mode;
 
     let mut input_area_message_type = input_view_model.input_area_message_type;
     let mut input_area_text = input_view_model.input_area_text;
@@ -161,6 +163,13 @@ pub(crate) fn SessionUI() -> Element {
                                                 });
                                         }),
                                     },
+                                    MenuItem {
+                                        icon: Some(icons::REPLAY_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
+                                        label: String::from("从此消息开始回放……"),
+                                        on_click: EventHandler::new(move |_| {
+                                            replay_mode.set(Some(message_id));
+                                        }),
+                                    },
                                 ],
                             },
                         ],
@@ -208,12 +217,9 @@ fn SessionMainContent() -> Element {
     let message_repository = session_view_model.message_repository;
 
     let mut need_to_scroll_down = session_ui_view_model.need_to_scroll_down;
+    let replay_mode = session_ui_view_model.replay_mode;
 
-    // use_resource(move || async move {
-    //     let current_session_uuid = current_session.unwrap();
-
-    //     need_to_scroll_down.set(true);
-    // });
+    let mut messages_original = use_signal(Vec::new);
 
     use_effect(move || {
         if !*need_to_scroll_down.read() {
@@ -235,11 +241,35 @@ fn SessionMainContent() -> Element {
 
     let mut messages = vec![];
 
-    {
-        let m = message_repository.read();
-        let m = view_try!(m.iterator());
+    let _resource = use_resource(move || {
+        let (replay, min_id) = replay_mode().map_or((false, 0), |x| (true, x));
 
-        let mut iter = m.peekable();
+        let repo = message_repository.read();
+        let m = panic_try!(repo.iterator())
+            .filter(|x| x.0 >= min_id)
+            .map(|(id, msg)| (id, msg.clone()))
+            .collect::<Vec<_>>();
+
+        async move {
+            let m = m;
+
+            if replay {
+                messages_original.clear();
+                for msg in m {
+                    let mut msg = msg;
+                    msg.1.set_animation(true);
+                    dioxus_sdk::time::sleep(time::Duration::from_millis(1200)).await;
+                    messages_original.write().push(msg);
+                }
+            } else {
+                messages_original.set(m.clone());
+            }
+        }
+    });
+
+    {
+        let iter = messages_original.read();
+        let mut iter = iter.iter().map(|(id, msg)| (*id, msg)).peekable();
 
         let mut temporary = vec![]; // 用于判断一组消息是不是一个人发的，然后塞进 messages
         let mut sender_now = iter.peek().map(|x| x.1.sender());

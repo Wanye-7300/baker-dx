@@ -36,6 +36,9 @@ pub(crate) struct SessionUIViewModel {
     pub(crate) with_message_actions_menu_open: Signal<Option<Action>>,
     pub(crate) with_reaction_menu_open: Signal<Option<Action>>,
     pub(crate) need_to_scroll_down: Signal<bool>,
+
+    /// 是否在回放模式。如果是，则是 `Some(message_id)`，指示从哪个消息开始回放。
+    pub(crate) replay_mode: Signal<Option<u64>>,
 }
 
 impl SessionUIViewModel {
@@ -47,6 +50,7 @@ impl SessionUIViewModel {
         let with_message_actions_menu_open = use_signal(|| None);
         let with_reaction_menu_open = use_signal(|| None);
         let need_to_scroll_down = use_signal(|| false);
+        let replay_mode = use_signal(|| None);
 
         use_context_provider(|| SessionUIViewModel {
             with_sender_selector_message_type,
@@ -56,6 +60,17 @@ impl SessionUIViewModel {
             with_message_actions_menu_open,
             with_reaction_menu_open,
             need_to_scroll_down,
+            replay_mode,
         });
+    }
+
+    pub(crate) fn reset(&mut self) {
+        self.with_sender_selector_open.set(false);
+        self.with_more_menu_open.set(false);
+        self.with_stickers_menu_open.set(false);
+        self.with_message_actions_menu_open.set(None);
+        self.with_reaction_menu_open.set(None);
+        self.need_to_scroll_down.set(true);
+        self.replay_mode.set(None);
     }
 }

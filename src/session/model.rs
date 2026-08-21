@@ -73,6 +73,10 @@ impl Message {
         self.animation
     }
 
+    pub(crate) fn set_animation(&mut self, animation: bool) {
+        self.animation = animation;
+    }
+
     pub(crate) fn reactions(&self) -> &Vec<Reaction> {
         &self.reactions
     }
