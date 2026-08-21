@@ -4,7 +4,7 @@
 //! > 这个分支用于重写整个项目，目前还处在早期开发中。
 //! > 目前仅支持 Web Platform。
 
-use crate::{operator::model::Avatar, ui::Baker};
+use crate::{operator::model::Avatar, ui::Baker, ui::Panic};
 use dioxus::prelude::*;
 use uuid::Uuid;
 
@@ -25,6 +25,9 @@ struct BakerState {
 enum Route {
     #[route("/")]
     Baker {},
+
+    #[route("/panic/:msg")]
+    Panic { msg: String },
 }
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");

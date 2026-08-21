@@ -1167,3 +1167,17 @@ button {
   background-color: #00000010;
   cursor: pointer;
 }
+
+/* Panics
+   ================================================================================ */
+
+.panic {
+  width: 100vw;
+  height: 100vh;
+  padding: 20px;
+  background-color: blue;
+  text-autospace: normal;
+  font-family: "Consolas", "Courier New", Courier, "Microsoft YaHei";
+  user-select: text;
+  overflow-y: scroll;
+}

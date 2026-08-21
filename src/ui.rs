@@ -24,6 +24,8 @@ impl Drop for ObjectUrl {
 
 #[component]
 pub(super) fn Baker() -> Element {
+    use_hook(crate::shared::panic::install_panic_hook);
+
     let baker_state = use_context::<crate::BakerState>();
     let dialogs = baker_state.dialogs.read();
 
@@ -77,6 +79,13 @@ pub(super) fn Baker() -> Element {
         {
             Image { id: "background-image", uuid }
         }
+    }
+}
+
+#[component]
+pub(crate) fn Panic(msg: String) -> Element {
+    rsx! {
+        {msg}
     }
 }
 
@@ -325,7 +334,7 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                                 },
                             }
                         }
-
+                    
                     }
 
                     label { r#for: "avatar-select", "头像" }
