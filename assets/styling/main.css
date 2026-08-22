@@ -1181,3 +1181,42 @@ button {
   user-select: text;
   overflow-y: scroll;
 }
+
+/* General Components
+   ================================================================================ */
+
+.component-input {
+  position: relative;
+}
+
+.component-input > input {
+  border: 0;
+  border-bottom: #a0a0a0 solid 2px;
+  border-radius: 0;
+  padding: 18px 10px 6px 10px;
+}
+
+.component-input > input:focus {
+  border-bottom-color: oklch(62.3% 0.214 259.815);
+}
+
+.component-input > label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  transition: all 0.2s;
+  color: #808080;
+  margin: 15px 10px 10px 10px;
+  transform-origin: left top;
+  font-size: 0.9rem;
+  cursor: text;
+}
+
+.component-input > input:focus + label,
+.component-input > input:not(:placeholder-shown) + label {
+  transform: translateY(-1em) scale(0.8);
+}
+
+.component-input > input:focus + label {
+  color: oklch(62.3% 0.214 259.815);
+}

@@ -116,6 +116,7 @@
 }
 
 ._reaction_menu_button:hover,
+._replay_menu_button:hover,
 ._reaction_menu_emojis > button:hover,
 ._reaction_menu_participants_button:hover {
   background-color: #00000010;
@@ -155,5 +156,41 @@
 }
 
 ._reaction_menu_button:disabled > img {
+  opacity: 0.5;
+}
+
+.replay-menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.replay-menu div:has(input) {
+  margin: 0 var(--menu-padding) var(--menu-padding) var(--menu-padding);
+}
+
+._replay_menu_button {
+  align-self: flex-end;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  border-radius: 0;
+  background-color: transparent;
+  transition:
+    background-color 0.1s linear,
+    color 0.1s linear;
+}
+
+._replay_menu_button:disabled {
+  color: grey;
+}
+
+._replay_menu_button > img {
+  width: 30%;
+  transition: opacity 0.1s linear;
+}
+
+._replay_menu_button:disabled > img {
   opacity: 0.5;
 }

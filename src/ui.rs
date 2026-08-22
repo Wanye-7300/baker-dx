@@ -5,6 +5,8 @@ use crate::session::view::session::*;
 use crate::session::view::session_list::*;
 use crate::session::view_model::session_view_model::SessionViewModel;
 use crate::shared::assets;
+use crate::ui::components::InputComponent;
+use crate::ui::components::InputComponentType;
 use crate::view_try;
 
 use dioxus::prelude::*;
@@ -327,7 +329,7 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                                 },
                             }
                         }
-                    
+
                     }
 
                     label { r#for: "avatar-select", "头像" }

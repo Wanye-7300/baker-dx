@@ -43,6 +43,7 @@ pub(crate) fn SessionUI() -> Element {
     let with_stickers_menu_open = session_ui_view_model.with_stickers_menu_open;
     let mut with_message_actions_menu_open = session_ui_view_model.with_message_actions_menu_open;
     let mut with_reaction_menu_open = session_ui_view_model.with_reaction_menu_open;
+    let mut with_replay_menu_open = session_ui_view_model.with_replay_menu_open;
     let mut need_to_scroll_down = session_ui_view_model.need_to_scroll_down;
     let mut replay_mode = session_ui_view_model.replay_mode;
 
@@ -167,7 +168,7 @@ pub(crate) fn SessionUI() -> Element {
                                         icon: Some(icons::REPLAY_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
                                         label: String::from("从此消息开始回放……"),
                                         on_click: EventHandler::new(move |_| {
-                                            replay_mode.set(Some(message_id));
+                                            with_replay_menu_open.set(with_message_actions_menu_open());
                                         }),
                                     },
                                 ],
@@ -192,6 +193,19 @@ pub(crate) fn SessionUI() -> Element {
                         session_uuid,
                         on_close: move |_| {
                             with_reaction_menu_open.set(None);
+                        },
+                        x,
+                        y,
+                    }
+                }
+
+                if let Some(Action(_session_uuid, message_id, x, y)) = with_replay_menu_open() {
+                    ReplayMenu {
+                        on_confirm: move |(delay_input, delay_message)| {
+                            replay_mode.set(Some((message_id, delay_input, delay_message)));
+                        },
+                        on_close: move |_| {
+                            with_replay_menu_open.set(None);
                         },
                         x,
                         y,
@@ -242,7 +256,7 @@ fn SessionMainContent() -> Element {
     let mut messages = vec![];
 
     let _resource = use_resource(move || {
-        let (replay, min_id) = replay_mode().map_or((false, 0), |x| (true, x));
+        let (replay, (min_id, delay_input, delay_message)) = replay_mode().map_or((false, (0, 0, 0)), |x| (true, x));
 
         let repo = message_repository.read();
         let m = panic_try!(repo.iterator())
@@ -258,7 +272,7 @@ fn SessionMainContent() -> Element {
                 for msg in m {
                     let mut msg = msg;
                     msg.1.set_animation(true);
-                    dioxus_sdk::time::sleep(time::Duration::from_millis(1200)).await;
+                    dioxus_sdk::time::sleep(time::Duration::from_millis(delay_message as u64)).await;
                     messages_original.write().push(msg);
                 }
             } else {

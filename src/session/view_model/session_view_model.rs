@@ -35,10 +35,11 @@ pub(crate) struct SessionUIViewModel {
     pub(crate) with_stickers_menu_open: Signal<bool>,
     pub(crate) with_message_actions_menu_open: Signal<Option<Action>>,
     pub(crate) with_reaction_menu_open: Signal<Option<Action>>,
+    pub(crate) with_replay_menu_open: Signal<Option<Action>>,
     pub(crate) need_to_scroll_down: Signal<bool>,
 
-    /// 是否在回放模式。如果是，则是 `Some(message_id)`，指示从哪个消息开始回放。
-    pub(crate) replay_mode: Signal<Option<u64>>,
+    /// 是否在回放模式。如果是，则是 `Some((message_id, delay_input, delay_message))`，指示从哪个消息开始回放和延迟。
+    pub(crate) replay_mode: Signal<Option<(u64, i64, i64)>>,
 }
 
 impl SessionUIViewModel {
@@ -49,6 +50,7 @@ impl SessionUIViewModel {
         let with_stickers_menu_open = use_signal(|| false);
         let with_message_actions_menu_open = use_signal(|| None);
         let with_reaction_menu_open = use_signal(|| None);
+        let with_replay_menu_open = use_signal(|| None);
         let need_to_scroll_down = use_signal(|| false);
         let replay_mode = use_signal(|| None);
 
@@ -59,6 +61,7 @@ impl SessionUIViewModel {
             with_stickers_menu_open,
             with_message_actions_menu_open,
             with_reaction_menu_open,
+            with_replay_menu_open,
             need_to_scroll_down,
             replay_mode,
         });
