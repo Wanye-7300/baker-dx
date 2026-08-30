@@ -1180,6 +1180,7 @@ button {
   font-family: "Consolas", "Courier New", Courier, "Microsoft YaHei";
   user-select: text;
   overflow-y: scroll;
+  line-break: anywhere;
 }
 
 /* General Components

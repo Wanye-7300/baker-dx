@@ -12,7 +12,7 @@ use uuid::Uuid;
 use web_sys::js_sys::{Object, Reflect};
 use web_sys::wasm_bindgen::{JsCast, JsValue};
 
-const MAX_SAFE_INTEGER: u64 = 9007199254740991;
+const MAX_SAFE_INTEGER: u64 = 0x1FFFFFFFFFFFFF;
 
 static DB: GlobalSignal<Option<Database>> = Signal::global(|| None);
 
@@ -26,7 +26,7 @@ pub(crate) struct MessageWrapper {
 }
 
 pub(crate) async fn open_db() -> anyhow::Result<()> {
-    let db: Database = Database::open("baker")
+    let db: Database = Database::open("baker-neo")
         .with_version(1u8)
         .with_on_upgrade_needed_fut(async move |event, db| {
             let old_version = event.old_version() as u64;

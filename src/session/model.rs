@@ -35,7 +35,64 @@ impl MessageType {
     }
 }
 
-pub(crate) type Reaction = (assets::Emoji, Vec<Option<Uuid>>);
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub(crate) struct Reaction {
+    #[serde(rename = "u")]
+    uuid: Uuid,
+    #[serde(rename = "e")]
+    emoji: assets::Emoji,
+    #[serde(rename = "s")]
+    senders: Vec<Option<Uuid>>,
+    #[serde(skip_serializing)]
+    #[serde(default)]
+    animation: bool,
+}
+
+impl Reaction {
+    pub(crate) fn new(emoji: assets::Emoji, senders: Vec<Option<Uuid>>) -> Reaction {
+        Reaction {
+            uuid: Uuid::new_v4(),
+            emoji,
+            senders,
+            animation: false,
+        }
+    }
+
+    pub(crate) fn with_animation(mut self) -> Reaction {
+        self.animation = true;
+        self
+    }
+
+    pub(crate) fn uuid(&self) -> Uuid {
+        self.uuid
+    }
+
+    pub(crate) fn emoji(&self) -> assets::Emoji {
+        self.emoji
+    }
+
+    pub(crate) fn senders(&self) -> &Vec<Option<Uuid>> {
+        &self.senders
+    }
+
+    #[allow(unused)]
+    pub(crate) fn clear_senders(&mut self) -> Vec<Option<Uuid>> {
+        std::mem::take(&mut self.senders)
+    }
+
+    #[allow(unused)]
+    pub(crate) fn push_sender(&mut self, sender: Option<Uuid>) {
+        self.senders.push(sender);
+    }
+
+    pub(crate) fn animation(&self) -> bool {
+        self.animation
+    }
+
+    pub(crate) fn set_animation(&mut self, animation: bool) {
+        self.animation = animation
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct Message {
@@ -45,6 +102,9 @@ pub(crate) struct Message {
     #[serde(skip_serializing)]
     #[serde(default)]
     animation: bool,
+    #[serde(skip_serializing)]
+    #[serde(default)]
+    input_animation: bool,
     #[serde(default = "Vec::new")]
     #[serde(rename = "r")]
     reactions: Vec<Reaction>,
@@ -57,6 +117,7 @@ impl Message {
             sender,
             content,
             animation: true,
+            input_animation: false,
             reactions: vec![],
         }
     }
@@ -77,6 +138,14 @@ impl Message {
         self.animation = animation;
     }
 
+    pub(crate) fn input_animation(&self) -> bool {
+        self.input_animation
+    }
+
+    pub(crate) fn set_input_animation(&mut self, input_animation: bool) {
+        self.input_animation = input_animation
+    }
+
     pub(crate) fn reactions(&self) -> &Vec<Reaction> {
         &self.reactions
     }
@@ -85,16 +154,20 @@ impl Message {
     ///
     /// 注意，当已经有这个 Reaction，仅把不在名单内的干员加进去。
     pub(crate) fn append_reaction(&mut self, reaction: Reaction) {
-        if let Some(index) = self.reactions.iter().position(|x| x.0 == reaction.0) {
+        if let Some(index) = self.reactions.iter().position(|x| x.emoji == reaction.emoji) {
             let ids_unlisted = reaction
-                .1
+                .senders
                 .iter()
-                .filter(|x| !self.reactions[index].1.contains(x))
+                .filter(|x| !self.reactions[index].senders.contains(x))
                 .collect::<Vec<_>>();
-            self.reactions[index].1.extend(ids_unlisted);
+            self.reactions[index].senders.extend(ids_unlisted);
         } else {
             self.reactions.push(reaction);
         }
+    }
+
+    pub(crate) fn clear_reaction(&mut self) -> Vec<Reaction> {
+        std::mem::take(&mut self.reactions)
     }
 }
 

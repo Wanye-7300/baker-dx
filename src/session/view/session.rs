@@ -4,12 +4,12 @@ use std::time;
 use crate::operator::model::*;
 use crate::operator::view_model::*;
 use crate::panic_try;
+use crate::session::model::Reaction;
 use crate::session::model::*;
 use crate::session::repository::*;
 use crate::session::view_model::input_view_model::*;
 use crate::session::view_model::session_view_model::*;
 use crate::settings::state::SettingsState;
-use crate::shared::assets;
 use crate::shared::assets::icons;
 use crate::shared::assets::stickers;
 use crate::shared::database;
@@ -21,13 +21,8 @@ use dioxus::{prelude::*, web::WebFileExt};
 use strum::VariantArray;
 use uuid::Uuid;
 
-type ActionParameter = (
-    u64,
-    MessageType,
-    Vec<(crate::shared::assets::Emoji, Vec<Option<Uuid>>)>,
-    bool,
-);
-type ProcessedMessage = (u64, MessageType, Vec<(assets::Emoji, Vec<Option<Uuid>>)>, bool);
+type Reactions = Vec<Reaction>;
+type ProcessedMessage = (u64, MessageType, Reactions, bool, bool);
 
 #[component]
 pub(crate) fn SessionUI() -> Element {
@@ -186,8 +181,8 @@ pub(crate) fn SessionUI() -> Element {
                     ReactionMenu {
                         on_confirm: move |(participants_ids_selected, emoji): (Vec<Option<Uuid>>, _)| async move {
                             panic_try!(
-                                MessageRepository::append_reaction(message_repository, message_id, (emoji,
-                                participants_ids_selected),). await
+                                MessageRepository::append_reaction(message_repository, message_id,
+                                Reaction::new(emoji, participants_ids_selected),). await
                             );
                         },
                         session_uuid,
@@ -256,7 +251,7 @@ fn SessionMainContent() -> Element {
     let mut messages = vec![];
 
     let _resource = use_resource(move || {
-        let (replay, (min_id, delay_input, delay_message)) = replay_mode().map_or((false, (0, 0, 0)), |x| (true, x));
+        let (replay, (min_id, _delay_input, delay_message)) = replay_mode().map_or((false, (0, 0, 0)), |x| (true, x));
 
         let repo = message_repository.read();
         let m = panic_try!(repo.iterator())
@@ -272,8 +267,24 @@ fn SessionMainContent() -> Element {
                 for msg in m {
                     let mut msg = msg;
                     msg.1.set_animation(true);
+                    msg.1.set_input_animation(true);
+                    let reactions = msg.1.clear_reaction();
                     dioxus_sdk::time::sleep(time::Duration::from_millis(delay_message as u64)).await;
                     messages_original.write().push(msg);
+                    for reaction in reactions {
+                        let mut reaction = reaction;
+                        reaction.set_animation(true);
+                        let emoji = reaction.emoji();
+                        for sender in reaction.senders().clone() {
+                            dioxus_sdk::time::sleep(time::Duration::from_millis(200)).await;
+                            messages_original
+                                .write()
+                                .last_mut()
+                                .unwrap()
+                                .1
+                                .append_reaction(Reaction::new(emoji, vec![sender]).with_animation());
+                        }
+                    }
                 }
             } else {
                 messages_original.set(m.clone());
@@ -296,6 +307,7 @@ fn SessionMainContent() -> Element {
                     peek.unwrap().1.content().clone(),
                     peek.unwrap().1.reactions().clone(),
                     peek.unwrap().1.animation(),
+                    peek.unwrap().1.input_animation(),
                 ));
             } else {
                 if !temporary.is_empty() {
@@ -320,6 +332,7 @@ fn SessionMainContent() -> Element {
                     peek.unwrap().1.content().clone(),
                     peek.unwrap().1.reactions().clone(),
                     peek.unwrap().1.animation(),
+                    peek.unwrap().1.input_animation(),
                 )];
                 sender_now = peek.map(|x| x.1.sender());
             }
@@ -672,10 +685,9 @@ fn MessageRow(avatar_on_left: bool, avatar: Asset, messages: Vec<ProcessedMessag
 }
 
 #[component]
-fn MessageBubble(avatar_on_left: bool, message: ActionParameter) -> Element {
+fn MessageBubble(avatar_on_left: bool, message: ProcessedMessage) -> Element {
     let session_view_model = use_context::<SessionViewModel>();
     let session_ui_view_model = use_context::<SessionUIViewModel>();
-    let operator_view_model = use_context::<OperatorViewModel>();
 
     let current_session = session_view_model.message_repository.read().current_session().unwrap();
     let mut with_message_actions_menu_open = session_ui_view_model.with_message_actions_menu_open;
@@ -705,39 +717,8 @@ fn MessageBubble(avatar_on_left: bool, message: ActionParameter) -> Element {
     rsx! {
         div { class: "message-bubble-wrapper", oncontextmenu,
             match message.1 {
-                MessageType::Text(txt) => rsx! {
-                    RichText { class: bubble_class, text: txt,
-                        if !message.2.is_empty() {
-                            div { class: "message-reaction-wrapper",
-                                for reaction in message.2 {
-                                    span { class: if message.3 { "message-reaction message-reaction-animation" } else { "message-reaction" },
-                                        img { src: Asset::from(reaction.0) }
-                                        span {
-                                            {
-                                                reaction
-                                                    .1
-                                                    .iter()
-                                                    .map(|x| match x {
-                                                        Some(x) => {
-                                                            operator_view_model
-                                                                .operator_repository
-                                                                .read()
-                                                                .get(*x)
-                                                                .unwrap()
-                                                                .name()
-                                                                .clone()
-                                                        }
-                                                        None => String::from("管理员"),
-                                                    })
-                                                    .collect::<Vec<String>>()
-                                                    .join("、")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                MessageType::Text(_) => rsx! {
+                    TextMessage { avatar_on_left, message }
                 },
                 MessageType::Image(uuid) => rsx! {
                     span { class: "{bubble_class} message-bubble-image",
@@ -750,6 +731,73 @@ fn MessageBubble(avatar_on_left: bool, message: ActionParameter) -> Element {
                     }
                 },
                 _ => unreachable!(),
+            }
+        }
+    }
+}
+
+#[component]
+fn TextMessage(avatar_on_left: bool, message: ProcessedMessage) -> Element {
+    let MessageType::Text(txt) = message.1 else {
+        panic!("TextMessage: Unreachable");
+    };
+
+    let bubble_class = if avatar_on_left {
+        if message.3 {
+            "message-bubble-others message-bubble-animate-left"
+        } else {
+            "message-bubble-others"
+        }
+    } else {
+        if message.3 {
+            "message-bubble-self message-bubble-animate-right"
+        } else {
+            "message-bubble-self"
+        }
+    };
+
+    rsx! {
+        RichText { class: bubble_class, text: txt,
+            ReactionComponent { reactions: message.2 }
+        }
+    }
+}
+
+#[component]
+fn ReactionComponent(reactions: Reactions) -> Element {
+    let operator_view_model = use_context::<OperatorViewModel>();
+
+    rsx! {
+        if !reactions.is_empty() {
+            div { class: "message-reaction-wrapper",
+                for reaction in reactions {
+                    span {
+                        key: "{reaction.uuid()}",
+                        class: if reaction.animation() { "message-reaction message-reaction-animation" } else { "message-reaction" },
+                        img { src: Asset::from(reaction.emoji()) }
+                        span {
+                            {
+                                reaction
+                                    .senders()
+                                    .iter()
+                                    .map(|x| match x {
+                                        Some(x) => {
+                                            operator_view_model
+                                                .operator_repository
+                                                .read()
+                                                .get(*x)
+                                                .unwrap()
+                                                .name()
+                                                .clone()
+                                        }
+                                        None => String::from("管理员"),
+                                    })
+                                    .collect::<Vec<String>>()
+                                    .join("、")
+                            }
+                        }
+                    }
+                }
             }
         }
     }
