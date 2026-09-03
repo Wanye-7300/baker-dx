@@ -1,13 +1,43 @@
-1.4[向渊行] => 1.45[向渊行(下半)]
+1.45[向渊行(下半)] => 1.5[雪凇幽梦]
 
-新增文件数量：1
-修改文件数量：0
+新增文件数量：24
+修改文件数量：1
 删除文件数量：0
 
-=== 新增文件 (1 个) ===
-  avatar/operator/ +1
-    + icon_round_chr_0035_liino.png
+=== 新增文件 (24 个) ===
+  avatar/operator/ +2
+    + icon_round_chr_0034_typhoea.png
+    + icon_round_chr_0038_purrche.png
 
-=== 没有修改的文件 ===
+  sticker/game/ +16
+    + sns_sticker_09_01.png
+    + sns_sticker_09_02.png
+    + sns_sticker_09_03.png
+    + sns_sticker_09_04.png
+    + sns_sticker_09_05.png
+    + sns_sticker_09_06.png
+    + sns_sticker_09_07.png
+    + sns_sticker_09_08.png
+    + sns_sticker_09_09.png
+    + sns_sticker_09_10.png
+    + sns_sticker_09_11.png
+    + sns_sticker_09_12.png
+    + sns_sticker_09_13.png
+    + sns_sticker_09_14.png
+    + sns_sticker_09_15.png
+    + sns_sticker_09_16.png
+
+  image/ +6
+    + sns_image_c35m1_1.png
+    + sns_image_chr_0034_1_1.png
+    + sns_image_chr_0034_2_1.png
+    + sns_image_chr_0035_3_1.png
+    + sns_image_sns_map02_lv009_3_1.png
+    + sns_image_sns_map02_lv009_3_2.png
+
+
+=== 已修改文件 (1 个) ===
+  icon/ ~1
+    ~ btn_SNS.png
 
 === 没有删除的文件 ===
