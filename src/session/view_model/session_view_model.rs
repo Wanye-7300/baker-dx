@@ -27,6 +27,14 @@ impl SessionViewModel {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Action(pub(crate) Uuid, pub(crate) u64, pub(crate) f64, pub(crate) f64);
 
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct ReplayMode {
+    pub(crate) message_id: u64,
+    pub(crate) delay_input: i64,
+    pub(crate) delay_message: i64,
+    pub(crate) delay_reaction: i64,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct SessionUIViewModel {
     pub(crate) with_sender_selector_message_type: Signal<bool>,
@@ -38,8 +46,8 @@ pub(crate) struct SessionUIViewModel {
     pub(crate) with_replay_menu_open: Signal<Option<Action>>,
     pub(crate) need_to_scroll_down: Signal<bool>,
 
-    /// 是否在回放模式。如果是，则是 `Some((message_id, delay_input, delay_message))`，指示从哪个消息开始回放和延迟。
-    pub(crate) replay_mode: Signal<Option<(u64, i64, i64)>>,
+    /// 是否在回放模式。如果是，则是 `Some(ReplayMode { .. })`，指示从哪个消息开始回放和延迟。
+    pub(crate) replay_mode: Signal<Option<ReplayMode>>,
 }
 
 impl SessionUIViewModel {

@@ -98,7 +98,9 @@ pub(crate) fn SessionUI() -> Element {
                 }
                 div { id: "session-main", class: "flex flex-column",
                     SessionMainContent {}
-                    InputArea { on_submit: submit }
+                    if replay_mode.read().is_none() {
+                        InputArea { on_submit: submit }
+                    }
                     if with_more_menu_open() {
                         MoreMenu { on_submit: submit }
                     }
@@ -111,7 +113,9 @@ pub(crate) fn SessionUI() -> Element {
                     src: crate::DECO_SNS_TWEET_DECORATE_10,
                 }
 
-                if let Some(Action(_session_uuid, message_id, x, y)) = with_message_actions_menu_open() {
+                if let Some(Action(_session_uuid, message_id, x, y)) = with_message_actions_menu_open()
+                    && replay_mode.read().is_none()
+                {
                     Menu {
                         groups: vec![
                             MenuGroup {
@@ -175,6 +179,28 @@ pub(crate) fn SessionUI() -> Element {
                         x,
                         y,
                     }
+                } else if let Some(Action(_session_uuid, _message_id, x, y)) = with_message_actions_menu_open() {
+                    Menu {
+                        groups: vec![
+                            MenuGroup {
+                                title: Some(String::from("回放模式")),
+                                items: vec![
+                                    MenuItem {
+                                        icon: Some(icons::DELETE_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
+                                        label: String::from("停止回放"),
+                                        on_click: EventHandler::new(move |_| async move {
+                                            replay_mode.set(None);
+                                        }),
+                                    },
+                                ],
+                            },
+                        ],
+                        on_close: move |_| {
+                            with_message_actions_menu_open.set(None);
+                        },
+                        x,
+                        y,
+                    }
                 }
 
                 if let Some(Action(session_uuid, message_id, x, y)) = with_reaction_menu_open() {
@@ -196,8 +222,16 @@ pub(crate) fn SessionUI() -> Element {
 
                 if let Some(Action(_session_uuid, message_id, x, y)) = with_replay_menu_open() {
                     ReplayMenu {
-                        on_confirm: move |(delay_input, delay_message)| {
-                            replay_mode.set(Some((message_id, delay_input, delay_message)));
+                        on_confirm: move |(delay_input, delay_message, delay_reaction)| {
+                            replay_mode
+                                .set(
+                                    Some(ReplayMode {
+                                        message_id,
+                                        delay_input,
+                                        delay_message,
+                                        delay_reaction,
+                                    }),
+                                );
                         },
                         on_close: move |_| {
                             with_replay_menu_open.set(None);
@@ -251,11 +285,22 @@ fn SessionMainContent() -> Element {
     let mut messages = vec![];
 
     let _resource = use_resource(move || {
-        let (replay, (min_id, _delay_input, delay_message)) = replay_mode().map_or((false, (0, 0, 0)), |x| (true, x));
+        let (replay, replay_mode) = replay_mode().map_or(
+            (
+                false,
+                ReplayMode {
+                    message_id: 0,
+                    delay_input: 0,
+                    delay_message: 0,
+                    delay_reaction: 0,
+                },
+            ),
+            |x| (true, x),
+        );
 
         let repo = message_repository.read();
         let m = panic_try!(repo.iterator())
-            .filter(|x| x.0 >= min_id)
+            .filter(|x| x.0 >= replay_mode.message_id)
             .map(|(id, msg)| (id, msg.clone()))
             .collect::<Vec<_>>();
 
@@ -269,20 +314,23 @@ fn SessionMainContent() -> Element {
                     msg.1.set_animation(true);
                     msg.1.set_input_animation(true);
                     let reactions = msg.1.clear_reaction();
-                    dioxus_sdk::time::sleep(time::Duration::from_millis(delay_message as u64)).await;
+                    dioxus_sdk::time::sleep(time::Duration::from_millis(replay_mode.delay_message as u64)).await;
                     messages_original.write().push(msg);
+                    need_to_scroll_down.set(true);
                     for reaction in reactions {
                         let mut reaction = reaction;
                         reaction.set_animation(true);
                         let emoji = reaction.emoji();
                         for sender in reaction.senders().clone() {
-                            dioxus_sdk::time::sleep(time::Duration::from_millis(200)).await;
+                            dioxus_sdk::time::sleep(time::Duration::from_millis(replay_mode.delay_reaction as u64))
+                                .await;
                             messages_original
                                 .write()
                                 .last_mut()
                                 .unwrap()
                                 .1
                                 .append_reaction(Reaction::new(emoji, vec![sender]).with_animation());
+                            need_to_scroll_down.set(true);
                         }
                     }
                 }
