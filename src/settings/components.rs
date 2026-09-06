@@ -1,4 +1,5 @@
 use super::state::SettingsState;
+use crate::shared::setting::*;
 use crate::{operator::model::Avatar, panic_try, shared::assets};
 
 use dioxus::{prelude::*, web::WebFileExt as _};
@@ -91,6 +92,37 @@ pub(crate) fn Settings(on_close: EventHandler) -> Element {
         ));
     });
 
+    let vm = use_signal(|| {
+        SettingViewModel::new(
+            "/Baker//Global Settings".to_string(),
+            SettingItemPage::new()
+                .with_child(SettingItem::new(
+                    "墙纸".to_owned(),
+                    Some("设置应用背景的墙纸。".to_owned()),
+                    SettingItemType::Image,
+                    None,
+                ))
+                .with_child(SettingItem::new(
+                    "SelfAvatar".to_owned(),
+                    Some("设置管理员自己的头像。".to_owned()),
+                    SettingItemType::Selection {
+                        selections: assets::CHARACTERS_AVATARS.keys().map(|x| (*x).to_owned()).collect(),
+                        default: "endministratorf".to_owned(),
+                    },
+                    None,
+                ))
+                .with_child(SettingItem::new(
+                    "名字".to_owned(),
+                    Some("设置管理员自己的名字。".to_owned()),
+                    SettingItemType::Str {
+                        default: "管理员".to_owned(),
+                    },
+                    None,
+                )),
+            true,
+        )
+    });
+
     rsx! {
         div { class: "backdrop centered", onclick: move |_| on_close.call(()),
             div {
@@ -103,26 +135,7 @@ pub(crate) fn Settings(on_close: EventHandler) -> Element {
                     button { onclick: move |_| on_close.call(()), "×" }
                 }
 
-                div { id: "settings-objects",
-                    h3 { "一般" }
-
-                    ImageSetting {
-                        object_name: "墙纸",
-                        on_change: move |uuid| {
-                            settings_state.image.set(Some(uuid));
-                            info!("Wallpaper has been set to: {}", uuid);
-                        },
-                        uuid: (settings_state.image)(),
-                    }
-
-                    AvatarSetting {
-                        object_name: "SelfAvatar",
-                        on_change: move |avatar| {
-                            settings_state.endministrator_avatar.set(avatar);
-                        },
-                        value: (settings_state.endministrator_avatar)(),
-                    }
-                }
+                SettingPageView { vm }
             }
         }
     }

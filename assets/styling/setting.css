@@ -1,0 +1,318 @@
+.general-setting-message {
+  width: 100%;
+  box-sizing: border-box;
+
+  background: #ffffff;
+  color: #1f1f1f;
+
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+.general-setting-message * {
+  color: #1f1f1f;
+}
+
+/* =========================
+   Header
+   ========================= */
+
+.gsp-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  min-height: 40px;
+  margin-bottom: 16px;
+}
+
+.gsp-header {
+  margin: 0;
+  padding: 0 0 10px 0;
+
+  font-size: 20px;
+  font-weight: 600;
+
+  color: #1f1f1f;
+}
+
+.gsp-back-button {
+  width: 32px;
+  height: 32px;
+
+  padding: 0;
+  margin-bottom: 8px;
+
+  background: #ffffff;
+  color: #222222;
+
+  font-size: 22px;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.gsp-back-button:hover {
+  background: #f2f2f2;
+}
+
+.gsp-back-button:active {
+  background: #e5e5e5;
+}
+
+/* =========================
+   Items container
+   ========================= */
+
+.gsp-items {
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================
+   Generic item
+   ========================= */
+
+.gsp-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  min-height: 56px;
+  padding: 10px 10px;
+
+  border: 0;
+  border-bottom: 1px solid #e4e4e4;
+
+  background: transparent;
+  color: inherit;
+
+  text-align: left;
+}
+
+.gsp-item:nth-child(even) {
+  background-color: #f6f6f6;
+}
+
+.gsp-item-label {
+  display: block;
+
+  min-width: 0;
+  margin-right: 24px;
+}
+
+.gsp-item-header {
+  margin: 0;
+
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.gsp-item-desc {
+  margin-top: 3px;
+
+  color: #707070;
+
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* =========================
+   Text / number inputs
+   ========================= */
+
+.gsp-item-input {
+  width: 180px;
+  box-sizing: border-box;
+
+  padding: 6px 8px;
+
+  border: 1px solid #bdbdbd;
+  outline: none;
+
+  background: #ffffff;
+  color: #1f1f1f;
+
+  font: inherit;
+}
+
+.gsp-item-input:hover {
+  border-color: #8f8f8f;
+}
+
+.gsp-item-input:focus {
+  border-color: #444444;
+}
+
+/* =========================
+   Checkbox
+   ========================= */
+
+.gsp-item-bool {
+  width: 18px;
+  height: 18px;
+
+  margin: 0;
+
+  cursor: pointer;
+}
+
+/* =========================
+   Selection
+   ========================= */
+
+.gsp-item-selection {
+  min-width: 180px;
+  box-sizing: border-box;
+
+  padding: 6px 28px 6px 8px;
+
+  border: 1px solid #bdbdbd;
+
+  background: #ffffff;
+  color: #1f1f1f;
+
+  font: inherit;
+
+  cursor: pointer;
+}
+
+.gsp-item-selection:hover {
+  border-color: #8f8f8f;
+}
+
+.gsp-item-selection:focus {
+  outline: 1px solid #444444;
+  outline-offset: -1px;
+}
+
+/* =========================
+   Image input
+   ========================= */
+
+.gsp-item-image {
+  max-width: 240px;
+
+  font: inherit;
+  font-size: 13px;
+}
+
+/* =========================
+   Button
+   ========================= */
+
+.gsp-item-button {
+  padding: 6px 12px;
+
+  border: 1px solid #bdbdbd;
+
+  background: #ffffff;
+  color: #1f1f1f;
+
+  font: inherit;
+
+  cursor: pointer;
+}
+
+.gsp-item-button:hover {
+  background: #f2f2f2;
+}
+
+.gsp-item-button:active {
+  background: #e5e5e5;
+}
+
+/* =========================
+   Page item
+   ========================= */
+
+.gsp-page-item {
+  width: 100%;
+
+  cursor: pointer;
+}
+
+.gsp-page-item:hover {
+  background: #f5f5f5;
+}
+
+.gsp-page-item:active {
+  background: #ededed;
+}
+
+.gsp-page-arrow {
+  flex-shrink: 0;
+
+  color: #6f6f6f;
+
+  font-size: 22px;
+}
+
+/* =========================
+   Section header
+   ========================= */
+
+.gsp-item-section-header {
+  margin-top: 22px;
+  padding: 8px 0;
+
+  border-bottom: 1px solid #bdbdbd;
+}
+
+.gsp-item-section-header:first-child {
+  margin-top: 0;
+}
+
+.gsp-item-section-header h4 {
+  margin: 0;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  color: #555555;
+}
+
+/* =========================
+   Empty / spacer
+   ========================= */
+
+.gsp-item-empty {
+  height: 18px;
+}
+
+/* =========================
+   Disabled
+   ========================= */
+
+.gsp-item input:disabled,
+.gsp-item select:disabled,
+.gsp-item button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* =========================
+   Small screens
+   ========================= */
+
+@media (max-width: 600px) {
+  .general-setting-message {
+    padding: 14px;
+  }
+
+  .gsp-item {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .gsp-item-input,
+  .gsp-item-selection {
+    width: 140px;
+    min-width: 140px;
+  }
+}
