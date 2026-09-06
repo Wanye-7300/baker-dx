@@ -25,7 +25,13 @@ impl SessionViewModel {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Action(pub(crate) Uuid, pub(crate) u64, pub(crate) f64, pub(crate) f64);
+pub(crate) struct Action(
+    pub(crate) Uuid,
+    pub(crate) u64,
+    pub(crate) f64,
+    pub(crate) f64,
+    pub(crate) bool,
+);
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ReplayMode {
