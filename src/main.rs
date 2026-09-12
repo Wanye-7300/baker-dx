@@ -5,7 +5,6 @@
 //! > 目前仅支持 Web Platform。
 
 use crate::operator::model::Avatar;
-use crate::shared::setting::*;
 use crate::ui::Baker;
 use dioxus::prelude::*;
 use uuid::Uuid;

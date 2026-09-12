@@ -102,6 +102,7 @@ pub(crate) fn RichText(
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum InputComponentType {
     Text,
@@ -117,6 +118,7 @@ pub(crate) enum InputComponentType {
     },
 }
 
+#[allow(dead_code)]
 pub(crate) enum InputType {
     Text(String),
     Int(i64),

@@ -7,6 +7,7 @@ use crate::ui::components::RichText;
 /// 设置窗口在根页面时的标题；进入子页后由当前子页名替换。
 pub(crate) const SETTING_WINDOW_TITLE: &str = "/ Baker // 设置";
 
+#[allow(dead_code)]
 #[rustfmt::skip]
 #[derive(Clone, PartialEq)]
 pub(crate) enum SettingItemType {
@@ -340,7 +341,7 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
                     input {
                         class: "gsp-item-input",
                         r#type: "text",
-                        value: "{current}",
+                        value: current,
 
                         oninput: move |event| {
                             let new_value = event.value();
@@ -402,7 +403,7 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
 
                     select {
                         class: "gsp-item-selection",
-                        value: "{current}",
+                        value: current.clone(),
 
                         onchange: move |event| {
                             let new_value = event.value();
@@ -412,9 +413,9 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
 
                         for selection in selections {
                             option {
-                                value: "{selection}",
+                                value: selection.clone(),
                                 selected: if selection == current { true },
-                                "{selection}"
+                                {selection.clone()}
                             }
                         }
                     }
@@ -497,7 +498,7 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
                             emit_change(&on_change, SettingItemValue::None);
                         },
 
-                        "{name}"
+                        {name}
                     }
                 }
             }
@@ -522,10 +523,10 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
             rsx! {
                 div { class: "gsp-item-section-header",
 
-                    h4 { "{name}" }
+                    h4 { {name} }
 
                     if let Some(desc) = desc {
-                        div { class: "gsp-item-desc", "{desc}" }
+                        div { class: "gsp-item-desc", {desc} }
                     }
                 }
             }
@@ -560,10 +561,10 @@ fn SettingItemLabel(name: String, desc: Option<String>) -> Element {
     rsx! {
         span { class: "gsp-item-label",
 
-            h4 { class: "gsp-item-header", "{name}" }
+            h4 { class: "gsp-item-header", {name} }
 
             if let Some(desc) = desc {
-                RichText { class: "gsp-item-desc", text: "{desc}" }
+                RichText { class: "gsp-item-desc", text: desc }
             }
         }
     }
