@@ -85,10 +85,14 @@ fn provide_settings() {
         shared::utils::get_item_or_default("E_avatar", || Avatar::Preset("endministratorf".to_owned()))
             .unwrap_or(Avatar::Preset("endministratorf".to_owned()))
     });
+    let endministrator_name = use_signal(|| {
+        shared::utils::get_item_or_default("E_name", || "管理员".to_owned()).unwrap_or("管理员".to_owned())
+    });
 
     use_context_provider(|| settings::state::SettingsState {
         image,
         endministrator_avatar,
+        endministrator_name,
     });
 }
 

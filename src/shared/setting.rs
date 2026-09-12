@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use dioxus::web::WebFileExt as _;
 use uuid::Uuid;
 
 use crate::ui::components::RichText;
@@ -9,12 +10,12 @@ pub(crate) const SETTING_WINDOW_TITLE: &str = "/ Baker // 设置";
 #[rustfmt::skip]
 #[derive(Clone, PartialEq)]
 pub(crate) enum SettingItemType {
-    Int { min: i64, max: i64, step: i64, default: i64 },
-    Float { min: f64, max: f64, step: f64, default: f64 },
-    Str { default: String },
-    Bool { default: bool },
-    Selection { selections: Vec<String>, default: String },
-    Image,
+    Int { min: i64, max: i64, step: i64, value: i64 },
+    Float { min: f64, max: f64, step: f64, value: f64 },
+    Str { value: String },
+    Bool { value: bool },
+    Selection { selections: Vec<String>, value: String },
+    Image { value: Option<Uuid> },
     Button,
     Empty,
     Header,
@@ -46,20 +47,24 @@ pub(crate) enum SettingItemValue {
 }
 
 impl SettingItemType {
-    fn default_value(&self) -> SettingItemValue {
+    fn initial_value(&self) -> SettingItemValue {
         match self {
-            SettingItemType::Int { default, .. } => SettingItemValue::Int(*default),
+            SettingItemType::Int { value, .. } => SettingItemValue::Int(*value),
 
-            SettingItemType::Float { default, .. } => SettingItemValue::Float(*default),
+            SettingItemType::Float { value, .. } => SettingItemValue::Float(*value),
 
-            SettingItemType::Str { default } => SettingItemValue::Str(default.clone()),
+            SettingItemType::Str { value } => SettingItemValue::Str(value.clone()),
 
-            SettingItemType::Bool { default } => SettingItemValue::Bool(*default),
+            SettingItemType::Bool { value } => SettingItemValue::Bool(*value),
 
-            SettingItemType::Selection { default, .. } => SettingItemValue::Selection(default.clone()),
+            SettingItemType::Selection { value, .. } => SettingItemValue::Selection(value.clone()),
 
-            SettingItemType::Image
-            | SettingItemType::Button
+            SettingItemType::Image { value } => match value {
+                Some(uuid) => SettingItemValue::Image(*uuid),
+                None => SettingItemValue::None,
+            },
+
+            SettingItemType::Button
             | SettingItemType::Empty
             | SettingItemType::Header
             | SettingItemType::Page(_) => SettingItemValue::None,
@@ -211,7 +216,7 @@ pub(crate) fn SettingPageView(vm: Signal<SettingViewModel>, mut caption: Signal<
 
 #[component]
 pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>) -> Element {
-    let initial_value = item.content.default_value();
+    let initial_value = item.content.initial_value();
     let mut value = use_signal(|| initial_value);
 
     let SettingItem {
@@ -229,12 +234,12 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
             min,
             max,
             step,
-            default,
+            value: initial,
         } => {
             let current = {
                 match &*value.read() {
                     SettingItemValue::Int(value) => *value,
-                    _ => default,
+                    _ => initial,
                 }
             };
 
@@ -276,12 +281,12 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
             min,
             max,
             step,
-            default,
+            value: initial,
         } => {
             let current = {
                 match &*value.read() {
                     SettingItemValue::Float(value) => *value,
-                    _ => default,
+                    _ => initial,
                 }
             };
 
@@ -319,11 +324,11 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
         // ====================================================
         // Str
         // ====================================================
-        SettingItemType::Str { default } => {
+        SettingItemType::Str { value: initial } => {
             let current = {
                 match &*value.read() {
                     SettingItemValue::Str(value) => value.clone(),
-                    _ => default,
+                    _ => initial,
                 }
             };
 
@@ -350,11 +355,11 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
         // ====================================================
         // Bool
         // ====================================================
-        SettingItemType::Bool { default } => {
+        SettingItemType::Bool { value: initial } => {
             let current = {
                 match &*value.read() {
                     SettingItemValue::Bool(value) => *value,
-                    _ => default,
+                    _ => initial,
                 }
             };
 
@@ -381,12 +386,12 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
         // ====================================================
         // Selection
         // ====================================================
-        SettingItemType::Selection { selections, default } => {
+        SettingItemType::Selection { selections, value: initial } => {
             let current = {
                 match &*value.read() {
                     SettingItemValue::Selection(value) => value.clone(),
 
-                    _ => default,
+                    _ => initial,
                 }
             };
 
@@ -406,7 +411,11 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
                         },
 
                         for selection in selections {
-                            option { value: "{selection}", "{selection}" }
+                            option {
+                                value: "{selection}",
+                                selected: if selection == current { true },
+                                "{selection}"
+                            }
                         }
                     }
                 }
@@ -416,26 +425,56 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
         // ====================================================
         // Image
         // ====================================================
-        SettingItemType::Image => {
+        SettingItemType::Image { .. } => {
+            let mut with_input_disabled = use_signal(|| false);
+            let has_image = matches!(&*value.read(), SettingItemValue::Image(_));
+
             rsx! {
                 div { class: "gsp-item",
 
                     SettingItemLabel { name, desc }
 
-                    input {
-                        class: "gsp-item-image",
-                        r#type: "file",
-                        accept: "image/*",
+                    div {
+                        div { class: "gsp-item-desc",
+                            if has_image {
+                                "已设置，选择新文件可替换"
+                            } else {
+                                "未设置"
+                            }
+                        }
 
-                    // TODO:
-                    //
-                    // 这里之后读取文件、存入你的资源系统，
-                    // 得到 Uuid 后：
-                    //
-                    // emit_change(
-                    //     &on_change,
-                    //     SettingItemValue::Image(uuid),
-                    // );
+                        input {
+                            class: "gsp-item-image",
+                            r#type: "file",
+                            accept: "image/*",
+                            disabled: with_input_disabled(),
+
+                            onchange: move |evt: Event<FormData>| {
+                                if let Some(file_data) = evt.files().first() {
+                                    let file = file_data.get_web_file().unwrap();
+
+                                    spawn(async move {
+                                        with_input_disabled.set(true);
+
+                                        let uuid = Uuid::new_v4();
+                                        crate::shared::database::save_multimedia(uuid, file.into()).await.unwrap();
+
+                                        // 旧的图不再被引用，顺手删掉，避免媒体库里留孤儿
+                                        let previous = match &*value.read() {
+                                            SettingItemValue::Image(previous) => Some(*previous),
+                                            _ => None,
+                                        };
+                                        if let Some(previous) = previous {
+                                            crate::shared::database::remove_multimedia(previous).await.unwrap();
+                                        }
+
+                                        value.set(SettingItemValue::Image(uuid));
+                                        with_input_disabled.set(false);
+                                        emit_change(&on_change, SettingItemValue::Image(uuid));
+                                    });
+                                }
+                            },
+                        }
                     }
                 }
             }

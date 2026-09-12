@@ -5,7 +5,6 @@ use crate::session::view::session::*;
 use crate::session::view::session_list::*;
 use crate::session::view_model::session_view_model::SessionViewModel;
 use crate::shared::assets;
-use crate::view_try;
 
 use dioxus::prelude::*;
 use fnv::FnvHashSet;
@@ -87,6 +86,7 @@ pub(super) fn Baker() -> Element {
     use_hook(crate::shared::panic::install_panic_hook);
 
     let baker_state = use_context::<crate::BakerState>();
+    let settings_state = use_context::<crate::settings::state::SettingsState>();
     let dialogs = baker_state.dialogs.read();
 
     let mut with_settings_open = use_signal(|| false);
@@ -133,10 +133,7 @@ pub(super) fn Baker() -> Element {
             }
         }
 
-        if let Some(uuid) = view_try!(
-            crate ::shared::utils::get_item_or_default("wallpaper", || None::< Uuid >,)
-        )
-        {
+        if let Some(uuid) = (settings_state.image)() {
             Image { id: "background-image", uuid }
         }
     }
