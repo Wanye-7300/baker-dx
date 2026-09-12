@@ -388,13 +388,14 @@ button {
   display: none;
 }
 
-.more-menu-upload-button {
-  background-color: white;
-  padding: 3px 100px;
-  border-radius: 2px;
-  border: 1px grey solid;
-  width: 300px;
-  cursor: pointer;
+#more-menu .gsp-item-input {
+  width: 180px;
+  height: auto;
+  margin-top: 0;
+  border: 1px solid #bdbdbd;
+  border-radius: 0;
+  background-color: #ffffff;
+  font-size: 1em;
 }
 
 .menu h1,
@@ -439,23 +440,6 @@ button {
   to {
     opacity: 1;
   }
-}
-
-.more-menu-actions {
-  position: static;
-  white-space: nowrap;
-}
-
-.more-menu-actions > span {
-  margin: 0 5px 0 5px;
-  font-size: 0.95rem;
-  cursor: pointer;
-  color: black;
-}
-
-.more-menu-actions > span:hover {
-  text-decoration: underline;
-  color: oklch(65.88% 0.22754 26.089);
 }
 
 .message-row-avatar {
