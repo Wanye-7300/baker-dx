@@ -63,6 +63,13 @@ pub(crate) fn SessionUI() -> Element {
                     MessageType::StateWithHorizontalLine(input_area_text())
                 }
                 InputAreaMessageType::Sticker(sticker) => MessageType::Sticker(sticker),
+                InputAreaMessageType::Task => MessageType::Task {
+                    title: input_area_text(),
+                    location: "Location".to_string(),
+                    task_importance: TaskImportance::Critical,
+                    task_type: TaskType::Activity,
+                    completed: false,
+                },
             },
         );
 
@@ -99,7 +106,9 @@ pub(crate) fn SessionUI() -> Element {
                 }
                 div { id: "session-main", class: "flex flex-column",
                     SessionMainContent {}
-                    InputArea { on_submit: submit }
+                    if replay_mode.read().is_none() {
+                        InputArea { on_submit: submit }
+                    }
                     if with_more_menu_open() {
                         MoreMenu { on_submit: submit }
                     }
@@ -112,7 +121,9 @@ pub(crate) fn SessionUI() -> Element {
                     src: crate::DECO_SNS_TWEET_DECORATE_10,
                 }
 
-                if let Some(Action(_session_uuid, message_id, x, y)) = with_message_actions_menu_open() {
+                if let Some(Action(_session_uuid, message_id, x, y, true)) = with_message_actions_menu_open()
+                    && replay_mode.read().is_none()
+                {
                     Menu {
                         groups: vec![
                             MenuGroup {
@@ -176,9 +187,88 @@ pub(crate) fn SessionUI() -> Element {
                         x,
                         y,
                     }
+                } else if let Some(Action(_session_uuid, message_id, x, y, false)) = with_message_actions_menu_open()
+                    && replay_mode.read().is_none()
+                {
+                    Menu {
+                        groups: vec![
+                            MenuGroup {
+                                title: Some(String::from("对消息进行操作")),
+                                items: vec![
+                                    MenuItem {
+                                        icon: Some(icons::DELETE_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
+                                        label: String::from("删除"),
+                                        on_click: EventHandler::new(move |_| async move {
+                                            panic_try!(
+                                                MessageRepository::delete(message_repository, message_id).
+                                                await
+                                            );
+                                            input_area_mode.set(InputAreaMode::Normal);
+                                        }),
+                                    },
+                                    MenuItem {
+                                        icon: Some(
+                                            icons::ARROW_INSERT_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48,
+                                        ),
+                                        label: String::from("在此前插入消息…"),
+                                        on_click: EventHandler::new(move |_| {
+                                            input_area_mode
+                                                .set(InputAreaMode::Insert {
+                                                    id: message_id,
+                                                });
+                                        }),
+                                    },
+                                    MenuItem {
+                                        icon: Some(icons::EDIT_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
+                                        label: String::from("修改消息…"),
+                                        on_click: EventHandler::new(move |_| {
+                                            input_area_mode
+                                                .set(InputAreaMode::Modify {
+                                                    id: message_id,
+                                                });
+                                        }),
+                                    },
+                                    MenuItem {
+                                        icon: Some(icons::REPLAY_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
+                                        label: String::from("从此消息开始回放……"),
+                                        on_click: EventHandler::new(move |_| {
+                                            with_replay_menu_open.set(with_message_actions_menu_open());
+                                        }),
+                                    },
+                                ],
+                            },
+                        ],
+                        on_close: move |_| {
+                            with_message_actions_menu_open.set(None);
+                        },
+                        x,
+                        y,
+                    }
+                } else if let Some(Action(_session_uuid, _message_id, x, y, _)) = with_message_actions_menu_open() {
+                    Menu {
+                        groups: vec![
+                            MenuGroup {
+                                title: Some(String::from("回放模式")),
+                                items: vec![
+                                    MenuItem {
+                                        icon: Some(icons::DELETE_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
+                                        label: String::from("停止回放"),
+                                        on_click: EventHandler::new(move |_| async move {
+                                            replay_mode.set(None);
+                                        }),
+                                    },
+                                ],
+                            },
+                        ],
+                        on_close: move |_| {
+                            with_message_actions_menu_open.set(None);
+                        },
+                        x,
+                        y,
+                    }
                 }
 
-                if let Some(Action(session_uuid, message_id, x, y)) = with_reaction_menu_open() {
+                if let Some(Action(session_uuid, message_id, x, y, _)) = with_reaction_menu_open() {
                     ReactionMenu {
                         on_confirm: move |(participants_ids_selected, emoji): (Vec<Option<Uuid>>, _)| async move {
                             panic_try!(
@@ -195,10 +285,18 @@ pub(crate) fn SessionUI() -> Element {
                     }
                 }
 
-                if let Some(Action(_session_uuid, message_id, x, y)) = with_replay_menu_open() {
+                if let Some(Action(_session_uuid, message_id, x, y, _)) = with_replay_menu_open() {
                     ReplayMenu {
-                        on_confirm: move |(delay_input, delay_message)| {
-                            replay_mode.set(Some((message_id, delay_input, delay_message)));
+                        on_confirm: move |(delay_input, delay_message, delay_reaction)| {
+                            replay_mode
+                                .set(
+                                    Some(ReplayMode {
+                                        message_id,
+                                        delay_input,
+                                        delay_message,
+                                        delay_reaction,
+                                    }),
+                                );
                         },
                         on_close: move |_| {
                             with_replay_menu_open.set(None);
@@ -252,11 +350,22 @@ fn SessionMainContent() -> Element {
     let mut messages = vec![];
 
     let _resource = use_resource(move || {
-        let (replay, (min_id, _delay_input, delay_message)) = replay_mode().map_or((false, (0, 0, 0)), |x| (true, x));
+        let (replay, replay_mode) = replay_mode().map_or(
+            (
+                false,
+                ReplayMode {
+                    message_id: 0,
+                    delay_input: 0,
+                    delay_message: 0,
+                    delay_reaction: 0,
+                },
+            ),
+            |x| (true, x),
+        );
 
         let repo = message_repository.read();
         let m = panic_try!(repo.iterator())
-            .filter(|x| x.0 >= min_id)
+            .filter(|x| x.0 >= replay_mode.message_id)
             .map(|(id, msg)| (id, msg.clone()))
             .collect::<Vec<_>>();
 
@@ -270,20 +379,23 @@ fn SessionMainContent() -> Element {
                     msg.1.set_animation(true);
                     msg.1.set_input_animation(true);
                     let reactions = msg.1.clear_reaction();
-                    dioxus_sdk::time::sleep(time::Duration::from_millis(delay_message as u64)).await;
+                    dioxus_sdk::time::sleep(time::Duration::from_millis(replay_mode.delay_message as u64)).await;
                     messages_original.write().push(msg);
+                    need_to_scroll_down.set(true);
                     for reaction in reactions {
                         let mut reaction = reaction;
                         reaction.set_animation(true);
                         let emoji = reaction.emoji();
                         for sender in reaction.senders().clone() {
-                            dioxus_sdk::time::sleep(time::Duration::from_millis(200)).await;
+                            dioxus_sdk::time::sleep(time::Duration::from_millis(replay_mode.delay_reaction as u64))
+                                .await;
                             messages_original
                                 .write()
                                 .last_mut()
                                 .unwrap()
                                 .1
                                 .append_reaction(Reaction::new(emoji, vec![sender]).with_animation());
+                            need_to_scroll_down.set(true);
                         }
                     }
                 }
@@ -661,7 +773,7 @@ fn MessageRow(avatar_on_left: bool, avatar: Asset, messages: Vec<ProcessedMessag
     let session_ui_view_model = use_context::<SessionUIViewModel>();
 
     let current_session = session_view_model.message_repository.read().current_session().unwrap();
-    let mut with_reaction_menu_open = session_ui_view_model.with_reaction_menu_open;
+    let mut with_message_actions_menu_open = session_ui_view_model.with_message_actions_menu_open;
 
     if messages.is_empty() {
         return rsx! {};
@@ -672,7 +784,7 @@ fn MessageRow(avatar_on_left: bool, avatar: Asset, messages: Vec<ProcessedMessag
     let oncontextmenu = move |evt: Event<MouseData>| {
         evt.prevent_default();
         let position = evt.client_coordinates();
-        with_reaction_menu_open.set(Some(Action(current_session, message_id, position.x, position.y)));
+        with_message_actions_menu_open.set(Some(Action(current_session, message_id, position.x, position.y, false)));
     };
 
     match &messages[0].1 {
@@ -693,6 +805,22 @@ fn MessageRow(avatar_on_left: bool, avatar: Asset, messages: Vec<ProcessedMessag
                 span {}
                 span { {txt.to_string()} }
                 span {}
+            }
+        },
+        MessageType::Task {
+            title,
+            location,
+            task_importance,
+            task_type,
+            completed,
+        } => rsx! {
+            Task {
+                title: title.clone(),
+                location: location.clone(),
+                task_importance: *task_importance,
+                task_type: *task_type,
+                completed: *completed,
+                oncontextmenu,
             }
         },
         MessageType::Text(_) | MessageType::Image(_) | MessageType::Sticker(_) => {
@@ -739,6 +867,35 @@ fn MessageRow(avatar_on_left: bool, avatar: Asset, messages: Vec<ProcessedMessag
 }
 
 #[component]
+fn Task(
+    title: String,
+    location: String,
+    task_importance: TaskImportance,
+    task_type: TaskType,
+    completed: bool,
+    oncontextmenu: EventHandler<Event<MouseData>>,
+) -> Element {
+    rsx! {
+        div { class: "task", oncontextmenu,
+            div { class: "task-importance" }
+            div { class: "task-icon-wrapper",
+                img { class: "task-icon", src: task_type.as_asset() }
+                img {
+                    class: "task-icon-deco",
+                    src: crate::DECO_SNS_TWEET_DECORATE_50,
+                }
+            }
+
+            div { class: "task-separator" }
+            div { class: "task-title",
+                div { class: "task-title-title", {title.to_string()} }
+                div { class: "task-title-location", {location.to_string()} }
+            }
+        }
+    }
+}
+
+#[component]
 fn MessageBubble(avatar_on_left: bool, message: ProcessedMessage) -> Element {
     let session_view_model = use_context::<SessionViewModel>();
     let session_ui_view_model = use_context::<SessionUIViewModel>();
@@ -748,10 +905,18 @@ fn MessageBubble(avatar_on_left: bool, message: ProcessedMessage) -> Element {
 
     let message_id = message.0;
 
+    let message_type = message.1.clone();
+
     let oncontextmenu = move |evt: Event<MouseData>| {
         evt.prevent_default();
         let position = evt.client_coordinates();
-        with_message_actions_menu_open.set(Some(Action(current_session, message_id, position.x, position.y)));
+        with_message_actions_menu_open.set(Some(Action(
+            current_session,
+            message_id,
+            position.x,
+            position.y,
+            matches!(message_type, MessageType::Text(_)),
+        )));
     };
 
     let bubble_class = if avatar_on_left {

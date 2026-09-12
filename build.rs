@@ -124,6 +124,14 @@ fn main() {
         false,
         Some(|_x: &str| true),
     );
+    walk(
+        "assets/extracted/mission",
+        None,
+        &mut code,
+        None,
+        false,
+        Some(|_x: &str| true),
+    );
 
     walk(
         "assets/icons",

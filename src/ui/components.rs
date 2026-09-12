@@ -365,9 +365,10 @@ pub(crate) fn ReactionMenu(
 }
 
 #[component]
-pub(crate) fn ReplayMenu(on_confirm: EventHandler<(i64, i64)>, on_close: EventHandler, x: f64, y: f64) -> Element {
+pub(crate) fn ReplayMenu(on_confirm: EventHandler<(i64, i64, i64)>, on_close: EventHandler, x: f64, y: f64) -> Element {
     let mut delay_input = use_signal(|| None);
     let mut delay_message = use_signal(|| None);
+    let mut delay_reaction = use_signal(|| None);
 
     rsx! {
         GeneralMenu {
@@ -406,11 +407,31 @@ pub(crate) fn ReplayMenu(on_confirm: EventHandler<(i64, i64)>, on_close: EventHa
                     }
                 },
             }
+            InputComponent {
+                id: "delay-reaction",
+                label: "Reaction间间隔（按ms记）",
+                component_type: InputComponentType::Int {
+                    min: Some(0),
+                    max: Some(10000),
+                    step: Some(100),
+                },
+                on_value_change: move |evt| {
+                    match evt {
+                        InputType::Int(delay) => delay_reaction.set(Some(delay)),
+                        _ => unreachable!(),
+                    }
+                },
+            }
             button {
                 disabled: delay_input.read().is_none() || delay_message.read().is_none(),
                 class: "_replay_menu_button",
                 onclick: move |_| {
-                    on_confirm.call((delay_input().unwrap(), delay_message().unwrap()));
+                    on_confirm
+                        .call((
+                            delay_input().unwrap(),
+                            delay_message().unwrap(),
+                            delay_reaction().unwrap(),
+                        ));
                     on_close.call(());
                 },
 
