@@ -825,70 +825,136 @@ button {
   z-index: 326;
 }
 
-.dialog {
+.win10-dialog {
   position: absolute;
-  background-color: white;
   left: 10px;
   bottom: 10px;
   min-width: 600px;
-  padding: 15px;
-  border-radius: 3px;
+  padding: 0;
+  background-color: #ffffff;
+  border: 1px solid #a0a0a0;
+  border-radius: 0;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.15),
+    0 6px 16px rgba(0, 0, 0, 0.12);
   z-index: 326;
-  animation: dialog-popup 0.15s ease-out forwards;
+  font-size: 12px;
+  line-height: 1.4;
+  animation: win10-dialog-fade 0.1s linear forwards;
 }
 
-.dialog-title {
-  margin: -15px;
-  padding: 12px;
-  padding-left: 15px;
-  background-color: #fdfc00;
-  color: black;
-  font-size: 1rem;
-  font-weight: 500;
+.win10-dialog,
+.win10-dialog * {
+  font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "HarmonyOS Sans", sans-serif;
+}
+
+.win10-dialog * {
+  color: #000000;
+}
+
+.win10-dialog .dialog-title {
+  height: 32px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0 0 0 10px;
+  background-color: #ffffff;
+  color: #000000;
+  font-size: 12px;
+  font-weight: 400;
+  align-items: center;
   justify-content: space-between;
+  cursor: default;
+  touch-action: none;
 }
 
-.dialog-title-close {
-  background-color: #00000000;
-  border: 0px;
-  width: 20px;
-  height: 20px;
-  font-size: 1.2em;
+.win10-dialog .dialog-title-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.dialog-title-close:hover {
-  background-color: #00000020;
-}
-
-.dialog-content {
-  min-height: 200px;
-  margin: 20px 0 20px 0;
-}
-
-.dialog-buttons {
-  justify-content: end;
-}
-
-.dialog-buttons-confirm {
-  height: 35px;
-  width: 100px;
+.win10-dialog .dialog-title-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  min-width: 46px;
+  height: 32px;
+  padding: 0;
   border: 0;
-  border-radius: 5px;
-  background-color: #fdfc00;
+  border-radius: 0;
+  background-color: transparent;
 }
 
-.dialog-buttons-confirm:hover {
-  background-color: #fdfc0090;
+.win10-dialog .dialog-title-close:hover {
+  background-color: #e81123;
 }
 
-.dialog-buttons-confirm:disabled {
-  background-color: #d7d7d7;
-  color: #858585;
-  cursor: not-allowed;
+.win10-dialog .dialog-title-close:active {
+  background-color: #f1707a;
 }
 
-.dialog-buttons-confirm:disabled:hover {
-  background-color: #d7d7d7;
+.win10-dialog .dialog-title-close:hover,
+.win10-dialog .dialog-title-close:hover * {
+  color: #ffffff;
+}
+
+.win10-dialog .caption-glyph {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+}
+
+.win10-dialog .dialog-content {
+  min-height: 96px;
+  margin: 0;
+  padding: 10px 12px 0 12px;
+}
+
+.win10-dialog .dialog-buttons {
+  justify-content: flex-end;
+  padding: 8px 12px 12px 12px;
+}
+
+.win10-dialog .win10-button,
+.win10-dialog .dialog-buttons-confirm {
+  height: 30px;
+  min-width: 100px;
+  padding: 0 16px;
+  border: 1px solid #adadad;
+  border-radius: 0;
+  background-color: #e1e1e1;
+  color: #000000;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.win10-dialog .win10-button:hover:not(:disabled),
+.win10-dialog .dialog-buttons-confirm:hover:not(:disabled) {
+  background-color: #e5f1fb;
+  border-color: #0078d7;
+}
+
+.win10-dialog .win10-button:active:not(:disabled),
+.win10-dialog .dialog-buttons-confirm:active:not(:disabled) {
+  background-color: #cce4f7;
+  border-color: #005499;
+}
+
+.win10-dialog .win10-button:focus-visible,
+.win10-dialog .dialog-buttons-confirm:focus-visible {
+  outline: 1px dotted #000000;
+  outline-offset: -4px;
+}
+
+.win10-dialog .win10-button:disabled,
+.win10-dialog .dialog-buttons-confirm:disabled,
+.win10-dialog .win10-button:disabled:hover,
+.win10-dialog .dialog-buttons-confirm:disabled:hover {
+  background-color: #f4f4f4;
+  border-color: #d9d9d9;
+  color: #838383;
+  cursor: default;
 }
 
 @keyframes dialog-popup {
@@ -903,25 +969,161 @@ button {
   }
 }
 
-.form-input {
+@keyframes win10-dialog-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.win10-dialog .form-input,
+.win10-dialog input[type="text"] {
   display: block;
-  font-size: 0.95em;
   width: 100%;
-  height: 40px;
+  height: 24px;
+  padding: 0 4px;
+  border: 1px solid #7a7a7a;
+  border-radius: 0;
+  background-color: #ffffff;
+  color: #000000;
+  font-size: 12px;
+  box-shadow: none;
 }
 
-.dialog-validation-errors {
-  margin-top: 8px;
+.win10-dialog .form-input:focus,
+.win10-dialog input[type="text"]:focus {
+  outline: none;
+  border-color: #0078d7;
 }
 
-.dialog-validation-error {
-  margin: 4px 0 0;
-  color: #d32f2f;
-  font-size: 0.9rem;
+.win10-dialog .form-input::placeholder {
+  color: #767676;
 }
 
-#new-sessions-dialog {
-  gap: 5px;
+.win10-dialog input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  min-width: 13px;
+  margin: 0;
+  border: 1px solid #7a7a7a;
+  border-radius: 0;
+  background-color: #ffffff;
+  cursor: pointer;
+}
+
+.win10-dialog input[type="checkbox"]:hover {
+  border-color: #171717;
+}
+
+.win10-dialog input[type="checkbox"]:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1 5.4L3.7 8.1 9 1.7' fill='none' stroke='%23000000' stroke-width='1.6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 9px 9px;
+}
+
+.win10-dialog input[type="checkbox"]:focus-visible {
+  outline: 1px dotted #000000;
+  outline-offset: 1px;
+}
+
+.win10-dialog .win10-groupbox {
+  position: relative;
+  margin: 4px 0 0 0;
+  padding: 8px 6px 8px 6px;
+  border: 1px solid #d9d9d9;
+  border-radius: 0;
+  min-inline-size: 0;
+}
+
+.win10-dialog .win10-groupbox > legend {
+  position: absolute;
+  top: -10px;
+  left: 8px;
+  margin: 0;
+  padding: 0 4px;
+  background-color: #ffffff;
+  color: #000000;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.win10-dialog .participants {
+  max-width: none;
+  max-height: 168px;
+  overflow-y: auto;
+  background-color: #ffffff;
+}
+
+.win10-dialog .participant {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 6px;
+}
+
+.win10-dialog .participant:hover {
+  background-color: #e5f1fb;
+}
+
+.win10-dialog .participant > label,
+.win10-dialog .participant > span {
+  margin-left: 6px;
+  color: #000000;
+  font-size: 12px;
+}
+
+.win10-dialog .dialog-validation-errors {
+  min-height: 32px;
+  margin: 0;
+  padding-top: 4px;
+}
+
+.win10-dialog .dialog-validation-error {
+  margin: 0;
+  color: #c00000;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.win10-dialog #new-sessions-dialog {
+  gap: 10px;
+}
+
+.win10-dialog #new-sessions-dialog > .win10-actions {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.win10-dialog .menu label:has(+ input[type="text"]) {
+  position: static;
+  transform: none;
+}
+
+.win10-dialog .menu input[type="text"] {
+  margin-top: 2px;
+}
+
+.win10-dialog select {
+  height: 24px;
+  padding: 0 4px;
+  border: 1px solid #7a7a7a;
+  border-radius: 0;
+  background-color: #ffffff;
+  color: #000000;
+  font-size: 12px;
+}
+
+.win10-dialog select:focus {
+  outline: none;
+  border-color: #0078d7;
 }
 
 .participant {

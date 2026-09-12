@@ -22,6 +22,66 @@ impl Drop for ObjectUrl {
     }
 }
 
+/// 判定为「拖动」而非「点击」的位移阈值（像素）。
+const DRAG_THRESHOLD: f64 = 3.0;
+
+/// 标题栏高度，与 CSS 中 `.win10-dialog .dialog-title` 保持一致。
+const CAPTION_HEIGHT: f64 = 32.0;
+
+/// 窗口被拖出视口时，标题栏至少要留在视口内的宽度与高度，保证窗口还能再次被拖回来。
+const CAPTION_VISIBLE_WIDTH: f64 = 120.0;
+const CAPTION_VISIBLE_HEIGHT: f64 = 8.0;
+
+/// 窗口拖动状态。
+#[derive(Clone, Copy, PartialEq, Debug)]
+struct DialogDrag {
+    /// 按下时指针相对窗口左上角的偏移。
+    grab_x: f64,
+    grab_y: f64,
+    /// 窗口宽度，用于限制窗口横向拖出视口的距离。
+    width: f64,
+    /// 按下时指针所在的视口坐标，用于判断是否超过拖动阈值。
+    start_x: f64,
+    start_y: f64,
+    /// 本次按下是否已经构成拖动。
+    moved: bool,
+}
+
+/// 读取视口尺寸。
+fn viewport_size() -> (f64, f64) {
+    let Some(window) = web_sys::window() else {
+        return (0.0, 0.0);
+    };
+
+    let width = window.inner_width().ok().and_then(|value| value.as_f64()).unwrap_or(0.0);
+    let height = window.inner_height().ok().and_then(|value| value.as_f64()).unwrap_or(0.0);
+
+    (width, height)
+}
+
+/// 读取对话框窗口本体在视口中的矩形：left、top、width、height。
+fn dialog_rect(uuid: &Uuid) -> Option<(f64, f64, f64, f64)> {
+    let element = web_sys::window()?.document()?.get_element_by_id(&format!("win10-dialog-{uuid}"))?;
+    let rect = element.get_bounding_client_rect();
+
+    Some((rect.left(), rect.top(), rect.width(), rect.height()))
+}
+
+/// 允许窗口被拖出视口，但始终保留一部分标题栏可见，保证还能拖回来。
+fn clamp_position(left: f64, top: f64, width: f64, viewport: (f64, f64)) -> (f64, f64) {
+    let (viewport_width, viewport_height) = viewport;
+
+    // 横向：左右各自最多拖出「窗口宽度 - 120px」，即至少 120px 标题栏留在视口内
+    let min_left = CAPTION_VISIBLE_WIDTH - width;
+    let max_left = (viewport_width - CAPTION_VISIBLE_WIDTH).max(min_left);
+
+    // 纵向：标题栏上沿最多到 -24px（下沿仍留 8px），下沿最多到视口底部上方 8px
+    let min_top = CAPTION_VISIBLE_HEIGHT - CAPTION_HEIGHT;
+    let max_top = (viewport_height - CAPTION_VISIBLE_HEIGHT).max(min_top);
+
+    (left.clamp(min_left, max_left), top.clamp(min_top, max_top))
+}
+
 #[component]
 pub(super) fn Baker() -> Element {
     use_hook(crate::shared::panic::install_panic_hook);
@@ -164,33 +224,113 @@ pub(crate) fn Dialog(
 ) -> Element {
     let mut baker_state = use_context::<crate::BakerState>();
 
+    // 拖动相关状态（每个对话框实例各自一份；未拖动过时位置完全交给 CSS）
+    let mut drag = use_signal(|| None::<DialogDrag>);
+    let mut position = use_signal(|| None::<(f64, f64)>);
+    // 拖动结束后需要吞掉随之而来的 backdrop click，否则「拖到空白处松手」会被当成点击背景而关闭对话框
+    let mut swallow_click = use_signal(|| false);
+
     rsx! {
         div {
             class: "backdrop",
             key: "{uuid}",
+            // 背景铺满视口，指针在窗口内移动/抬起的事件会冒泡到这里，因此无需 pointer capture
+            onpointermove: move |evt| {
+                let Some(state) = drag() else {
+                    return;
+                };
+
+                let point = evt.client_coordinates();
+                let (left, top) = clamp_position(
+                    point.x - state.grab_x,
+                    point.y - state.grab_y,
+                    state.width,
+                    viewport_size(),
+                );
+
+                if position() != Some((left, top)) {
+                    position.set(Some((left, top)));
+                }
+
+                if !state.moved && (point.x - state.start_x).abs() + (point.y - state.start_y).abs() > DRAG_THRESHOLD {
+                    drag.set(Some(DialogDrag { moved: true, ..state }));
+                }
+            },
+            onpointerup: move |_| {
+                if drag().is_some_and(|state| state.moved) {
+                    swallow_click.set(true);
+                }
+                drag.set(None);
+            },
+            onpointercancel: move |_| drag.set(None),
+            onpointerleave: move |_| drag.set(None),
+            // 在背景上按下时清掉残留状态；点击背景关闭对话框的行为保持不变
+            onpointerdown: move |_| {
+                drag.set(None);
+                swallow_click.set(false);
+            },
             onclick: move |_| {
+                if swallow_click() {
+                    swallow_click.set(false);
+                    return;
+                }
                 baker_state.dialogs.write().remove(&uuid);
             },
             div {
                 key: "{uuid.to_string()}",
-                class: "dialog flex flex-column",
+                id: "win10-dialog-{uuid}",
+                class: "dialog win10-dialog flex flex-column",
+                style: position()
+                    .map(|(left, top)| format!("left: {left}px; top: {top}px; bottom: auto;"))
+                    .unwrap_or_default(),
                 onclick: move |e| {
                     e.stop_propagation();
                 },
-                div { class: "dialog-title flex flex-row",
-                    {title}
+                // Windows 10 caption：左侧标题 + 右侧关闭按钮；标题栏本身是拖动把手
+                div {
+                    class: "dialog-title flex flex-row",
+                    onpointerdown: move |evt| {
+                        let Some((left, top, width, _height)) = dialog_rect(&uuid) else {
+                            return;
+                        };
+
+                        let point = evt.client_coordinates();
+                        drag.set(Some(DialogDrag {
+                            grab_x: point.x - left,
+                            grab_y: point.y - top,
+                            width,
+                            start_x: point.x,
+                            start_y: point.y,
+                            moved: false,
+                        }));
+
+                        // 不要冒泡到背景的 pointerdown，否则刚建立的拖动状态会被清掉
+                        evt.stop_propagation();
+                    },
+                    span { class: "dialog-title-text", {title} }
                     button {
                         class: "dialog-title-close",
+                        r#type: "button",
+                        title: "关闭",
+                        aria_label: "关闭",
+                        // 从关闭按钮上按下不参与拖动
+                        onpointerdown: move |evt| evt.stop_propagation(),
                         onclick: move |_| {
                             baker_state.dialogs.write().remove(&uuid);
                         },
-                        "×"
+                        svg {
+                            class: "caption-glyph",
+                            view_box: "0 0 10 10",
+                            width: "10",
+                            height: "10",
+                            path { d: "M0 0 L10 10 M10 0 L0 10" }
+                        }
                     }
                 }
                 div { class: "dialog-content", {children} }
                 div { class: "dialog-buttons flex flex-row",
                     button {
-                        class: "dialog-buttons-confirm",
+                        class: "dialog-buttons-confirm win10-button",
                         disabled: confirm_disabled,
                         onclick: move |_| on_confirm.call(()),
                         "好"
@@ -250,18 +390,6 @@ pub(crate) fn DialogNewSession(
             },
             uuid,
             div { id: "new-sessions-dialog", class: "flex flex-column",
-                button {
-                    id: "button-new-operator",
-                    onclick: move |_| {
-                        let uuid_neo = Uuid::new_v4();
-                        baker_state.dialogs.write().insert(uuid_neo, rsx! {
-                            DialogManageOperators { uuid: uuid_neo }
-                        });
-                        baker_state.dialogs.write().remove(&uuid);
-                    },
-                    "添加新干员"
-                }
-
                 input {
                     class: "form-input",
                     placeholder: "会话名",
@@ -271,7 +399,27 @@ pub(crate) fn DialogNewSession(
                     },
                 }
 
-                ParticipantsSelection { participants_ids }
+                // Win32 GroupBox：参与者分组
+                fieldset { class: "win10-groupbox",
+                    legend { "参与者" }
+                    ParticipantsSelection { participants_ids }
+                }
+
+                div { class: "win10-actions",
+                    button {
+                        id: "button-new-operator",
+                        class: "win10-button",
+                        r#type: "button",
+                        onclick: move |_| {
+                            let uuid_neo = Uuid::new_v4();
+                            baker_state.dialogs.write().insert(uuid_neo, rsx! {
+                                DialogManageOperators { uuid: uuid_neo }
+                            });
+                            baker_state.dialogs.write().remove(&uuid);
+                        },
+                        "添加新干员"
+                    }
+                }
 
                 div { class: "dialog-validation-errors",
                     if session_name.read().trim().is_empty() {
