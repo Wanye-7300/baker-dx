@@ -1,0 +1,65 @@
+/* Task
+   ================================================================================ */
+
+.task {
+  border: 2px solid #929191;
+  margin: 0 40px;
+  border-radius: 8px;
+
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  height: 75px;
+
+  background: #2a2a2a var(--task-uncompleted) no-repeat right / auto 100%;
+}
+
+.task > .task-importance {
+  width: 8px;
+  height: 100%;
+  background-color: yellow;
+  border-radius: 8px 0 0 8px;
+}
+
+.task > .task-icon-wrapper {
+  position: relative;
+  height: 70%;
+  margin: 0 18px 0 18px;
+}
+
+.task > .task-icon-wrapper > .task-icon {
+  height: 100%;
+  opacity: 0.4;
+  display: flex;
+}
+
+.task > .task-icon-wrapper > .task-icon-deco {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 95%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.task > .task-separator {
+  width: 3px;
+  height: 50%;
+  background-color: #555555;
+  margin-right: 10px;
+}
+
+.task > .task-title {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.task > .task-title > .task-title-title {
+  font-size: 1.3rem;
+}
+
+.task > .task-title > .task-title-location {
+  color: #626262;
+}

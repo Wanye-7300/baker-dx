@@ -62,6 +62,13 @@ pub(crate) fn SessionUI() -> Element {
                     MessageType::StateWithHorizontalLine(input_area_text())
                 }
                 InputAreaMessageType::Sticker(sticker) => MessageType::Sticker(sticker),
+                InputAreaMessageType::Task => MessageType::Task {
+                    title: input_area_text(),
+                    location: "Location".to_string(),
+                    task_importance: TaskImportance::Critical,
+                    task_type: TaskType::Activity,
+                    completed: false,
+                },
             },
         );
 
@@ -746,6 +753,22 @@ fn MessageRow(avatar_on_left: bool, avatar: Asset, messages: Vec<ProcessedMessag
                 span {}
             }
         },
+        MessageType::Task {
+            title,
+            location,
+            task_importance,
+            task_type,
+            completed,
+        } => rsx! {
+            Task {
+                title: title.clone(),
+                location: location.clone(),
+                task_importance: *task_importance,
+                task_type: *task_type,
+                completed: *completed,
+                oncontextmenu,
+            }
+        },
         MessageType::Text(_) | MessageType::Image(_) | MessageType::Sticker(_) => {
             let avatar_left_class = if avatar_on_left {
                 "message-row-avatar message-row-avatar-background"
@@ -784,6 +807,35 @@ fn MessageRow(avatar_on_left: bool, avatar: Asset, messages: Vec<ProcessedMessag
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+#[component]
+fn Task(
+    title: String,
+    location: String,
+    task_importance: TaskImportance,
+    task_type: TaskType,
+    completed: bool,
+    oncontextmenu: EventHandler<Event<MouseData>>,
+) -> Element {
+    rsx! {
+        div { class: "task", oncontextmenu,
+            div { class: "task-importance" }
+            div { class: "task-icon-wrapper",
+                img { class: "task-icon", src: task_type.as_asset() }
+                img {
+                    class: "task-icon-deco",
+                    src: crate::DECO_SNS_TWEET_DECORATE_50,
+                }
+            }
+
+            div { class: "task-separator" }
+            div { class: "task-title",
+                div { class: "task-title-title", {title.to_string()} }
+                div { class: "task-title-location", {location.to_string()} }
             }
         }
     }

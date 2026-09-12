@@ -4,13 +4,8 @@
 //! > 这个分支用于重写整个项目，目前还处在早期开发中。
 //! > 目前仅支持 Web Platform。
 
-use crate::{
-    operator::model::Avatar,
-    ui::{
-        Baker,
-        components::{InputComponent, InputComponentType},
-    },
-};
+use crate::operator::model::Avatar;
+use crate::ui::Baker;
 use dioxus::prelude::*;
 use uuid::Uuid;
 
@@ -38,6 +33,7 @@ const NORMALIZE_CSS: Asset = asset!("/assets/styling/normalize.css");
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 const SELECTOR_CSS: Asset = asset!("/assets/styling/selector.css");
 const MENU_CSS: Asset = asset!("/assets/styling/menu.css");
+const MESSAGES_CSS: Asset = asset!("/assets/styling/messages.css");
 
 const FONT_THIN: Asset = asset!("/assets/HarmonyOS_Sans_Thin.ttf");
 const FONT_LIGHT: Asset = asset!("/assets/HarmonyOS_Sans_Light.ttf");
@@ -62,9 +58,11 @@ const DECO_SNS_TWEET_DECORATE_10: Asset = asset!("/assets/extracted/decorate/dec
 const DECO_SNS_TWEET_DECORATE_11: Asset = asset!("/assets/extracted/decorate/deco_sns_tweet_decorate_11.png");
 const LINE_SNS_TWEET_DECORATE: Asset = asset!("/assets/extracted/decorate/line_sns_tweet_decorate.png");
 const DECO_SNS_TWEET_DECORATE_02: Asset = asset!("/assets/extracted/decorate/deco_sns_tweet_decorate_02.png");
+const DECO_SNS_TWEET_DECORATE_50: Asset = asset!("/assets/deco/deco_sns_tweet_decorate_50.png");
 const SNS_LIST_DECORATE_2: Asset = asset!("/assets/extracted/decorate/sns_list_decorate_2.png");
 const DECO_SNS_TWEET_DECORATE: Asset = asset!("/assets/extracted/decorate/deco_sns_tweet_decorate.png");
 const ACHIEVEMENT_MAIN_DECO05: Asset = asset!("/assets/deco/achievement_main_deco05.png");
+const TASK_UNCOMPLETED: Asset = asset!("/assets/deco/task_uncompleted.png");
 
 fn main() {
     dioxus::launch(App);
@@ -184,11 +182,12 @@ fn App() -> Element {
         document::Style { {font_face} }
         document::Style { {font_face_bender} }
         document::Style {
-            ":root {{ --avatar-background: url(\"{avatar_background_bundled_path}\"); --avatar-frame: url(\"{avatar_frame_bundled_path}\"); --message-bubble-self: url(\"{message_bubble_self_bundled_path}\"); --message-bubble-others: url(\"{message_bubble_others_bundled_path}\"); --session-title-left-bar: url(\"{session_title_left_bar_bundled_path}\"); --session-title-right-bar: url(\"{session_title_right_bar_bundled_path}\"); --icon-sns-chat-emoticon: url(\"{icon_sns_chat_emoticon_bundled_path}\"); --icon-sns-chat-emoticon-selected: url(\"{ICON_SNS_CHAT_EMOTICON_SELECTED.bundled().bundled_path()}\"); --icon-sns-message-02: url(\"{icon_sns_message_02_bundled_path}\"); --input-area-more: url(\"{input_area_more_bundled_path}\"); --input-area-more-selected: url(\"{input_area_more_selected_bundled_path}\"); --deco_sns_tweet_decorate_10: url(\"{DECO_SNS_TWEET_DECORATE_10.bundled().bundled_path()}\"); --deco_sns_tweet_decorate_02: url(\"{DECO_SNS_TWEET_DECORATE_02.bundled().bundled_path()}\"); --sns_list_decorate_2: url(\"{SNS_LIST_DECORATE_2.bundled().bundled_path()}\"); --deco_sns_tweet_decorate: url(\"{DECO_SNS_TWEET_DECORATE.bundled().bundled_path()}\"); --achievement_main_deco05: url(\"{ACHIEVEMENT_MAIN_DECO05.bundled().bundled_path()}\"); }}"
+            ":root {{ --avatar-background: url(\"{avatar_background_bundled_path}\"); --avatar-frame: url(\"{avatar_frame_bundled_path}\"); --message-bubble-self: url(\"{message_bubble_self_bundled_path}\"); --message-bubble-others: url(\"{message_bubble_others_bundled_path}\"); --session-title-left-bar: url(\"{session_title_left_bar_bundled_path}\"); --session-title-right-bar: url(\"{session_title_right_bar_bundled_path}\"); --icon-sns-chat-emoticon: url(\"{icon_sns_chat_emoticon_bundled_path}\"); --icon-sns-chat-emoticon-selected: url(\"{ICON_SNS_CHAT_EMOTICON_SELECTED.bundled().bundled_path()}\"); --icon-sns-message-02: url(\"{icon_sns_message_02_bundled_path}\"); --input-area-more: url(\"{input_area_more_bundled_path}\"); --input-area-more-selected: url(\"{input_area_more_selected_bundled_path}\"); --deco_sns_tweet_decorate_10: url(\"{DECO_SNS_TWEET_DECORATE_10.bundled().bundled_path()}\"); --deco_sns_tweet_decorate_02: url(\"{DECO_SNS_TWEET_DECORATE_02.bundled().bundled_path()}\"); --sns_list_decorate_2: url(\"{SNS_LIST_DECORATE_2.bundled().bundled_path()}\"); --deco_sns_tweet_decorate: url(\"{DECO_SNS_TWEET_DECORATE.bundled().bundled_path()}\");  --achievement_main_deco05: url(\"{ACHIEVEMENT_MAIN_DECO05.bundled().bundled_path()}\"); --task-uncompleted: url(\"{TASK_UNCOMPLETED.bundled().bundled_path()}\"); }}"
         }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: SELECTOR_CSS }
         document::Link { rel: "stylesheet", href: MENU_CSS }
+        document::Link { rel: "stylesheet", href: MESSAGES_CSS }
 
         if shared::database::is_ready() {
             Router::<Route> {}

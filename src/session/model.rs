@@ -1,9 +1,46 @@
-use crate::operator::model::*;
-use crate::shared::assets;
+use crate::shared::assets::{
+    self, ALL_MISSION_ICON_GRAY, CHAR_MISSION_ICON_GRAY, FAC_MISSION_ICON_GRAY, MAIN_MISSION_ICON_GRAY,
+    MISC_MISSION_ICON_GRAY,
+};
+use crate::{operator::model::*, shared::assets::ACTIVITY_MISSION_ICON_GRAY};
 
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[repr(u8)]
+pub(crate) enum TaskImportance {
+    Critical,
+    Important,
+    Minor,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[repr(u8)]
+pub(crate) enum TaskType {
+    Activity,
+    All,
+    Character,
+
+    /// 谁知道这代表什么？
+    Fac,
+    Main,
+    Misc,
+}
+
+impl TaskType {
+    pub(crate) fn as_asset(&self) -> Asset {
+        match self {
+            TaskType::Activity => ACTIVITY_MISSION_ICON_GRAY,
+            TaskType::All => ALL_MISSION_ICON_GRAY,
+            TaskType::Character => CHAR_MISSION_ICON_GRAY,
+            TaskType::Fac => FAC_MISSION_ICON_GRAY,
+            TaskType::Main => MAIN_MISSION_ICON_GRAY,
+            TaskType::Misc => MISC_MISSION_ICON_GRAY,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "t", content = "c")]
@@ -25,6 +62,15 @@ pub(crate) enum MessageType {
 
     #[serde(rename = "f")]
     Sticker(assets::stickers::Stickers),
+
+    #[serde(rename = "g")]
+    Task {
+        title: String,
+        location: String,
+        task_importance: TaskImportance,
+        task_type: TaskType,
+        completed: bool,
+    },
 }
 
 impl MessageType {

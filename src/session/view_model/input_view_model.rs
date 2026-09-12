@@ -12,6 +12,7 @@ pub(crate) enum InputAreaMessageType {
     State,
     StateWithHorizontalLine,
     Sticker(assets::stickers::Stickers),
+    Task,
 }
 
 /// 决定输入框的行为。

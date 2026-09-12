@@ -45,6 +45,7 @@ pub(crate) fn Selector(
                         InputAreaMessageType::StateWithHorizontalLine,
                         "“状态”（带分隔符）".to_string(),
                     ),
+                    (InputAreaMessageType::Task, "任务".to_string()),
                 ]
                 {
                     button {
