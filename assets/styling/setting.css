@@ -30,16 +30,6 @@
   margin-bottom: 16px;
 }
 
-.gsp-header {
-  margin: 0;
-  padding: 0 0 10px 0;
-
-  font-size: 20px;
-  font-weight: 600;
-
-  color: #1f1f1f;
-}
-
 .gsp-back-button {
   width: 32px;
   height: 32px;
@@ -275,14 +265,6 @@
   font-weight: 600;
 
   color: #555555;
-}
-
-/* =========================
-   Empty / spacer
-   ========================= */
-
-.gsp-item-empty {
-  height: 18px;
 }
 
 /* =========================

@@ -1259,50 +1259,6 @@ button {
   color: black;
 }
 
-#settings-title {
-  display: flex;
-  flex-direction: row;
-
-  justify-content: space-between;
-  justify-items: center;
-}
-
-#settings-title > h2 {
-  font-weight: 400;
-  font-size: 0.95em;
-  margin: 0;
-  display: inline;
-}
-
-#settings-title > button {
-  background-color: transparent;
-  transition: background-color 0.1s;
-}
-
-#settings-title > button:hover {
-  background-color: #00000020;
-}
-
-#settings-objects > h3 {
-  margin: 10px 0;
-  font-weight: 400;
-}
-
-.settings-object {
-  display: flex;
-  flex-direction: row;
-
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0 10px 20px;
-  border: solid #00000020 2px;
-  border-width: 2px 0;
-}
-
-.choose-file {
-  cursor: pointer;
-}
-
 .message-reaction-wrapper {
   margin: 0 8px 8px 12px;
   display: flex;

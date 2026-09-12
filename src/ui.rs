@@ -506,11 +506,17 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                         onclick: move |_| {
                             let trimmed = name.read().trim().to_owned();
                             if !trimmed.is_empty() {
+                                let avatar_id = new_operator_avatar_id();
+                                // 没选头像时用 Avatar::None，别把空 preset 存进去
+                                let avatar = if avatar_id.is_empty() {
+                                    Avatar::None
+                                } else {
+                                    Avatar::Preset(avatar_id)
+                                };
+
                                 operators
                                     .write()
-                                    .push_operator(
-                                        Operator::new(trimmed, Avatar::Preset(new_operator_avatar_id())),
-                                    )
+                                    .push_operator(Operator::new(trimmed, avatar))
                                     .unwrap();
                                 name.write().clear();
                             }
