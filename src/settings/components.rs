@@ -1,5 +1,6 @@
 use super::state::SettingsState;
 use crate::shared::setting::*;
+use crate::ui::Dialog;
 use crate::{operator::model::Avatar, panic_try, shared::assets};
 
 use dioxus::{prelude::*, web::WebFileExt as _};
@@ -94,7 +95,7 @@ pub(crate) fn Settings(on_close: EventHandler) -> Element {
 
     let vm = use_signal(|| {
         SettingViewModel::new(
-            "/Baker//Global Settings".to_string(),
+            SETTING_WINDOW_TITLE.to_string(),
             SettingItemPage::new()
                 .with_child(SettingItem::new(
                     "墙纸".to_owned(),
@@ -118,24 +119,34 @@ pub(crate) fn Settings(on_close: EventHandler) -> Element {
                         default: "管理员".to_owned(),
                     },
                     None,
+                ))
+                .with_child(SettingItem::new(
+                    "关于项目".to_owned(),
+                    None,
+                    SettingItemType::Page(SettingItemPage::new().with_child(SettingItem::new(
+                        "本项目采用 MIT 协议".to_owned(),
+                        Some(include_str!("../../LICENSE").to_owned()),
+                        SettingItemType::Empty,
+                        None,
+                    ))),
+                    None,
                 )),
             true,
         )
     });
 
-    rsx! {
-        div { class: "backdrop centered", onclick: move |_| on_close.call(()),
-            div {
-                id: "settings",
-                onclick: move |evt| {
-                    evt.stop_propagation();
-                },
-                div { id: "settings-title",
-                    h2 { "/ Baker // 设置" }
-                    button { onclick: move |_| on_close.call(()), "×" }
-                }
+    let uuid = use_hook(Uuid::new_v4);
+    let title = use_signal(|| SETTING_WINDOW_TITLE.to_string());
 
-                SettingPageView { vm }
+    rsx! {
+        Dialog {
+            title,
+            uuid,
+            on_close: move |_| on_close.call(()),
+            on_confirm: move |_| on_close.call(()),
+
+            div { id: "settings",
+                SettingPageView { vm, caption: title }
             }
         }
     }

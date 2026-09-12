@@ -1126,6 +1126,11 @@ button {
   border-color: #0078d7;
 }
 
+.win10-dialog #settings {
+  border-color: transparent;
+  animation: none;
+}
+
 .participant {
   padding: 12px 5px;
 }

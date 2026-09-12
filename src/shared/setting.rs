@@ -1,6 +1,11 @@
 use dioxus::prelude::*;
 use uuid::Uuid;
 
+use crate::ui::components::RichText;
+
+/// 设置窗口在根页面时的标题；进入子页后由当前子页名替换。
+pub(crate) const SETTING_WINDOW_TITLE: &str = "/ Baker // 设置";
+
 #[rustfmt::skip]
 #[derive(Clone, PartialEq)]
 pub(crate) enum SettingItemType {
@@ -142,7 +147,7 @@ fn emit_change(handler: &Option<EventHandler<SettingItemValue>>, value: SettingI
 }
 
 #[component]
-pub(crate) fn SettingPageView(vm: Signal<SettingViewModel>) -> Element {
+pub(crate) fn SettingPageView(vm: Signal<SettingViewModel>, mut caption: Signal<String>) -> Element {
     let mut path = use_signal(Vec::<usize>::new);
 
     let current_page = {
@@ -154,21 +159,26 @@ pub(crate) fn SettingPageView(vm: Signal<SettingViewModel>) -> Element {
             .unwrap_or_else(|| vm.page.clone())
     };
 
-    let title = {
-        let vm = vm.read();
-        let path = path.read();
+    // 把当前子页名同步给窗口标题：不在子页时用窗口自己的名字
+    use_effect(move || {
+        let caption_text = {
+            let vm = vm.read();
+            let path = path.read();
 
-        page_name_at_path(&vm.page, &path).unwrap_or_else(|| vm.name.clone())
-    };
+            page_name_at_path(&vm.page, &path).unwrap_or_else(|| vm.name.clone())
+        };
+
+        caption.set(caption_text);
+    });
 
     let can_go_back = !path.read().is_empty();
 
     rsx! {
         div { class: "general-setting-message",
 
-            div { class: "gsp-title-row",
+            if can_go_back {
+                div { class: "gsp-title-row",
 
-                if can_go_back {
                     button {
                         class: "gsp-back-button",
                         r#type: "button",
@@ -180,8 +190,6 @@ pub(crate) fn SettingPageView(vm: Signal<SettingViewModel>) -> Element {
                         "‹"
                     }
                 }
-
-                h3 { class: "gsp-header", "{title}" }
             }
 
             div { class: "gsp-items",
@@ -461,7 +469,10 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
         // ====================================================
         SettingItemType::Empty => {
             rsx! {
-                div { class: "gsp-item-empty" }
+                div { class: "gsp-item",
+
+                    SettingItemLabel { name, desc }
+                }
             }
         }
 
@@ -513,7 +524,7 @@ fn SettingItemLabel(name: String, desc: Option<String>) -> Element {
             h4 { class: "gsp-item-header", "{name}" }
 
             if let Some(desc) = desc {
-                div { class: "gsp-item-desc", "{desc}" }
+                RichText { class: "gsp-item-desc", text: "{desc}" }
             }
         }
     }

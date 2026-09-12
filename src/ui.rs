@@ -216,19 +216,30 @@ pub(crate) fn ParticipantsSelection(participants_ids: Signal<fnv::FnvHashSet<Uui
 
 #[component]
 pub(crate) fn Dialog(
-    title: String,
+    mut title: Signal<String>,
     on_confirm: EventHandler,
     uuid: Uuid,
+    /// 关闭方式：传入时交给外部处理（例如设置窗口的开关信号），否则把这个对话框从 dialogs 表里移除
+    #[props(default)] on_close: Option<EventHandler>,
     #[props(default)] confirm_disabled: bool,
     children: Element,
 ) -> Element {
-    let mut baker_state = use_context::<crate::BakerState>();
+    let dialogs = use_context::<crate::BakerState>().dialogs;
 
     // 拖动相关状态（每个对话框实例各自一份；未拖动过时位置完全交给 CSS）
     let mut drag = use_signal(|| None::<DialogDrag>);
     let mut position = use_signal(|| None::<(f64, f64)>);
     // 拖动结束后需要吞掉随之而来的 backdrop click，否则「拖到空白处松手」会被当成点击背景而关闭对话框
     let mut swallow_click = use_signal(|| false);
+
+    let close = move || {
+        if let Some(handler) = on_close {
+            handler.call(());
+        } else {
+            let mut dialogs = dialogs;
+            dialogs.write().remove(&uuid);
+        }
+    };
 
     rsx! {
         div {
@@ -274,7 +285,7 @@ pub(crate) fn Dialog(
                     swallow_click.set(false);
                     return;
                 }
-                baker_state.dialogs.write().remove(&uuid);
+                close();
             },
             div {
                 key: "{uuid.to_string()}",
@@ -307,7 +318,7 @@ pub(crate) fn Dialog(
                         // 不要冒泡到背景的 pointerdown，否则刚建立的拖动状态会被清掉
                         evt.stop_propagation();
                     },
-                    span { class: "dialog-title-text", {title} }
+                    span { class: "dialog-title-text", "{title}" }
                     button {
                         class: "dialog-title-close",
                         r#type: "button",
@@ -315,9 +326,7 @@ pub(crate) fn Dialog(
                         aria_label: "关闭",
                         // 从关闭按钮上按下不参与拖动
                         onpointerdown: move |evt| evt.stop_propagation(),
-                        onclick: move |_| {
-                            baker_state.dialogs.write().remove(&uuid);
-                        },
+                        onclick: move |_| close(),
                         svg {
                             class: "caption-glyph",
                             view_box: "0 0 10 10",
@@ -353,9 +362,11 @@ pub(crate) fn DialogNewSession(
     let operator_view_model = use_context::<OperatorViewModel>();
     let operators = operator_view_model.operator_repository;
 
+    let title = use_signal(|| "添加新会话".to_string());
+
     rsx! {
         Dialog {
-            title: "添加新会话",
+            title,
             confirm_disabled: session_name.read().trim().is_empty() || participants_ids.read().is_empty(),
             on_confirm: move |_| {
                 let mut baker_state = use_context::<crate::BakerState>();
@@ -450,8 +461,10 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
     let mut edit_selected_operator_id = use_signal(|| None);
     let mut edit_selected_operator_name = use_signal(String::new);
 
+    let title = use_signal(|| "管理干员列表".to_string());
+
     rsx! {
-        Dialog { title: "管理干员列表", on_confirm: move |_| {}, uuid,
+        Dialog { title, on_confirm: move |_| {}, uuid,
 
             div { id: "new-operator-dialog", class: "flex flex-column",
                 div { class: "menu",
