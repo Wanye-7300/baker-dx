@@ -13,6 +13,7 @@ use crate::settings::state::SettingsState;
 use crate::shared::assets::icons;
 use crate::shared::assets::stickers;
 use crate::shared::database;
+use crate::shared::setting::*;
 use crate::ui::components::*;
 use crate::ui::selector;
 use crate::view_try;
@@ -608,7 +609,7 @@ fn MoreMenu(on_submit: EventHandler<Sender>) -> Element {
 
     let mut input_area_message_type = input_view_model.input_area_message_type;
 
-    let participants_ids: Signal<fnv::FnvHashSet<Uuid>> = use_signal(|| {
+    let mut participants_ids: Signal<fnv::FnvHashSet<Uuid>> = use_signal(|| {
         sessions
             .read()
             .get(&current_session)
@@ -645,39 +646,92 @@ fn MoreMenu(on_submit: EventHandler<Sender>) -> Element {
         }
     };
 
+    let operators = operator_view_model
+        .operator_repository
+        .read()
+        .iterator()
+        .filter(|(_, operator)| operator.activity())
+        .map(|(id, operator)| (id, operator.name().clone()))
+        .collect::<Vec<_>>();
+
+    let settings = use_signal(move || {
+        let mut operators_page = SettingItemPage::new();
+
+        for (id, name) in operators {
+            operators_page = operators_page.with_child(SettingItem::new(
+                name,
+                Some(id.to_string()),
+                SettingItemType::Bool {
+                    value: participants_ids.read().contains(&id),
+                },
+                Some(EventHandler::new(move |value: SettingItemValue| {
+                    let SettingItemValue::Bool(selected) = value else {
+                        return;
+                    };
+
+                    if selected {
+                        participants_ids.write().insert(id);
+                    } else {
+                        participants_ids.write().remove(&id);
+                    }
+                })),
+            ));
+        }
+
+        SettingViewModel::new(
+            "会话设置".to_owned(),
+            SettingItemPage::new()
+                .with_child(SettingItem::new(
+                    "发送图片".to_owned(),
+                    None,
+                    SettingItemType::Button,
+                    Some(EventHandler::new(move |_: SettingItemValue| {
+                        // 点隐藏的 file input，弹出系统文件选择框
+                        let _ = document::eval("document.getElementById('more-menu-image-input')?.click()");
+                    })),
+                ))
+                .with_child(SettingItem::new(
+                    "会话名".to_owned(),
+                    None,
+                    SettingItemType::Str { value: session_name },
+                    Some(EventHandler::new(move |value: SettingItemValue| {
+                        if let SettingItemValue::Str(name) = value {
+                            sessions.write().get_mut(&current_session).unwrap().rename(name);
+                        }
+                    })),
+                ))
+                .with_child(SettingItem::new(
+                    "干员管理".to_owned(),
+                    None,
+                    SettingItemType::Page(operators_page),
+                    None,
+                ))
+                .with_child(SettingItem::new(
+                    "删除此会话".to_owned(),
+                    Some("消息会永久消失！".to_owned()),
+                    SettingItemType::Button,
+                    Some(EventHandler::new(move |_: SettingItemValue| async move {
+                        message_repository.write().clear();
+                        panic_try!(SessionRepository::delete_session(sessions, current_session).await);
+                    })),
+                )),
+            true,
+        )
+    });
+
+    let caption = use_signal(String::new);
+
     rsx! {
         InputAreaMenu {
-            label { class: "more-menu-upload-button",
-                "发送图片"
-                input {
-                    r#type: "file",
-                    accept: "image/*",
-                    hidden: true,
-                    onchange,
-                }
-            }
-            hr {}
-            h3 { "会话设置" }
-            label { "会话名" }
             input {
-                r#type: "text",
-                value: session_name.to_string(),
-                onchange: move |evt| {
-                    sessions.write().get_mut(&current_session).unwrap().rename(evt.value());
-                },
-                {session_name.to_string()}
+                id: "more-menu-image-input",
+                r#type: "file",
+                accept: "image/*",
+                hidden: true,
+                onchange,
             }
-            div { class: "more-menu-actions",
-                span {
-                    onclick: move |_| async move {
-                        message_repository.write().clear();
-                        panic_try!(SessionRepository::delete_session(sessions, current_session). await);
-                    },
-                    "删除此会话（消息会永久消失！）"
-                }
-            }
-            h3 { "干员管理" }
-            crate::ui::ParticipantsSelection { participants_ids }
+
+            SettingPageView { vm: settings, caption }
         }
     }
 }

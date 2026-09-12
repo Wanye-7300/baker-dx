@@ -5,6 +5,7 @@
 //! > 目前仅支持 Web Platform。
 
 use crate::operator::model::Avatar;
+use crate::shared::setting::*;
 use crate::ui::Baker;
 use dioxus::prelude::*;
 use uuid::Uuid;
@@ -33,6 +34,8 @@ const NORMALIZE_CSS: Asset = asset!("/assets/styling/normalize.css");
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 const SELECTOR_CSS: Asset = asset!("/assets/styling/selector.css");
 const MENU_CSS: Asset = asset!("/assets/styling/menu.css");
+const SETTING_CSS: Asset = asset!("/assets/styling/setting.css");
+const MARKDOWN_CSS: Asset = asset!("/assets/styling/markdown.css");
 const MESSAGES_CSS: Asset = asset!("/assets/styling/messages.css");
 
 const FONT_THIN: Asset = asset!("/assets/HarmonyOS_Sans_Thin.ttf");
@@ -80,10 +83,14 @@ fn provide_settings() {
         shared::utils::get_item_or_default("E_avatar", || Avatar::Preset("endministratorf".to_owned()))
             .unwrap_or(Avatar::Preset("endministratorf".to_owned()))
     });
+    let endministrator_name = use_signal(|| {
+        shared::utils::get_item_or_default("E_name", || "管理员".to_owned()).unwrap_or("管理员".to_owned())
+    });
 
     use_context_provider(|| settings::state::SettingsState {
         image,
         endministrator_avatar,
+        endministrator_name,
     });
 }
 
@@ -187,6 +194,8 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: SELECTOR_CSS }
         document::Link { rel: "stylesheet", href: MENU_CSS }
+        document::Link { rel: "stylesheet", href: SETTING_CSS }
+        document::Link { rel: "stylesheet", href: MARKDOWN_CSS }
         document::Link { rel: "stylesheet", href: MESSAGES_CSS }
 
         if shared::database::is_ready() {

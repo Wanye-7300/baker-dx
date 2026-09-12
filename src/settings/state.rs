@@ -7,4 +7,5 @@ use uuid::Uuid;
 pub(crate) struct SettingsState {
     pub(crate) image: Signal<Option<Uuid>>,
     pub(crate) endministrator_avatar: Signal<Avatar>,
+    pub(crate) endministrator_name: Signal<String>,
 }

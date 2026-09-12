@@ -18,7 +18,11 @@ impl Avatar {
     pub(crate) fn to_asset_operator(&self) -> Asset {
         match &self {
             Avatar::None => CHARACTERS_AVATARS["none"],
-            Avatar::Preset(preset) => CHARACTERS_AVATARS[preset.as_str()],
+            // 取不到就退回「未知」，避免脏数据（例如历史遗留的空 preset）把整个应用打崩
+            Avatar::Preset(preset) => CHARACTERS_AVATARS
+                .get(preset.as_str())
+                .copied()
+                .unwrap_or(CHARACTERS_AVATARS["none"]),
             Avatar::Uploaded(_uuid) => todo!(),
         }
     }
@@ -26,7 +30,10 @@ impl Avatar {
     pub(crate) fn to_asset_session(&self) -> Asset {
         match &self {
             Avatar::None => ICON_ROUND_SNS_ENDFIELD_GROUP_A,
-            Avatar::Preset(preset) => CHARACTERS_AVATARS[preset.as_str()],
+            Avatar::Preset(preset) => CHARACTERS_AVATARS
+                .get(preset.as_str())
+                .copied()
+                .unwrap_or(CHARACTERS_AVATARS["none"]),
             Avatar::Uploaded(_uuid) => todo!(),
         }
     }
