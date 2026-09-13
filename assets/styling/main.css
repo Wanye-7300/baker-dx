@@ -13,6 +13,7 @@
 html,
 body {
   height: 100%;
+  overflow-x: hidden;
 }
 
 input,
@@ -829,7 +830,9 @@ button {
 
 .win10-dialog,
 .win10-dialog * {
-  font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "HarmonyOS Sans", sans-serif;
+  font-family:
+    "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "HarmonyOS Sans",
+    sans-serif;
 }
 
 .win10-dialog * {

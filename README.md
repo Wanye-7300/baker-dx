@@ -28,3 +28,13 @@ cargo install cargo-binstall
 cargo binstall dioxus-cli --force
 dx serve --platform web
 ```
+
+## 许可证
+
+《明日方舟：终末地》二创制作工具
+
+源代码（assets/ 除外）以 MIT 许可证开源。详见 `LICENSE`。
+
+游戏相关素材的著作权归其各自权利人所有。
+
+本项目为非官方二创工具，与上海鹰角网络科技有限公司无隶属、授权或合作关系。

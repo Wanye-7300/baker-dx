@@ -36,6 +36,7 @@ const MENU_CSS: Asset = asset!("/assets/styling/menu.css");
 const SETTING_CSS: Asset = asset!("/assets/styling/setting.css");
 const MARKDOWN_CSS: Asset = asset!("/assets/styling/markdown.css");
 const MESSAGES_CSS: Asset = asset!("/assets/styling/messages.css");
+const LOADING_PAGE_CSS: Asset = asset!("/assets/styling/loading_page.css");
 
 const FONT_THIN: Asset = asset!("/assets/HarmonyOS_Sans_Thin.ttf");
 const FONT_LIGHT: Asset = asset!("/assets/HarmonyOS_Sans_Light.ttf");
@@ -52,6 +53,7 @@ const MESSAGE_BUBBLE_OTHERS: Asset = asset!("/assets/deco/bg_message_left.png");
 const SESSION_TITLE_LEFT_BAR: Asset = asset!("/assets/deco/session_title_left_bar.png");
 const SESSION_TITLE_RIGHT_BAR: Asset = asset!("/assets/deco/session_title_right_bar.png");
 const ICON_SNS_MESSAGE_02: Asset = asset!("/assets/extracted/icon/icon_sns_message_02.png");
+const BTN_SNS: Asset = asset!("/assets/extracted/icon/btn_SNS.png");
 const ICON_SNS_CHAT_EMOTICON: Asset = asset!("/assets/deco/input_area_emoticon.png");
 const ICON_SNS_CHAT_EMOTICON_SELECTED: Asset = asset!("/assets/deco/input_area_emoticon_selected.png");
 const INPUT_AREA_MORE: Asset = asset!("/assets/deco/input_area_more.png");
@@ -102,7 +104,22 @@ fn App() -> Element {
     crate::session::view_model::session_view_model::SessionUIViewModel::use_session_ui_view_model_provider();
     crate::operator::view_model::OperatorViewModel::use_operator_view_model_provider().unwrap();
 
-    let _database = use_resource(|| async { shared::database::open_db().await });
+    let mut task_cnt = use_signal(|| 0);
+    let task_total = use_signal(|| 1);
+    let mut loading_progress = use_signal(|| 0.0f32);
+    let on_loading_completed = use_signal(|| false);
+    let on_loading_animation_completed = use_signal(|| false);
+
+    use_effect(move || {
+        task_cnt.read();
+        loading_progress.set(task_cnt() as f32 / task_total().max(1) as f32);
+    });
+
+    let _database = use_resource(move || async move {
+        let open_result = shared::database::open_db().await;
+        *task_cnt.write() += 1;
+        open_result
+    });
 
     let font_face = format!(
         r#"
@@ -196,11 +213,87 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: SETTING_CSS }
         document::Link { rel: "stylesheet", href: MARKDOWN_CSS }
         document::Link { rel: "stylesheet", href: MESSAGES_CSS }
+        document::Link { rel: "stylesheet", href: LOADING_PAGE_CSS }
 
         if shared::database::is_ready() {
             Router::<Route> {}
         } else {
             div { id: "database-loading", class: "flex", "加载数据库" }
+        }
+        if !on_loading_animation_completed() {
+            LoadingPage {
+                progress: loading_progress,
+                on_loading_completed,
+                on_loading_animation_completed,
+            }
+        }
+        // 放在 LoadingPage 外面：LoadingPage 退场时有 transform，会成为 fixed 元素的包含块，
+        // 那样标识会跟着它一起滑走。
+        if !on_loading_animation_completed() {
+            div { class: if on_loading_completed() { "loading-page-project-info loading-page-project-info-animation" } else { "loading-page-project-info" },
+                div { class: "loading-page-project-info-header",
+                    img { src: BTN_SNS, alt: "BakerDX" }
+                    span { "BakerDX" }
+                }
+                p { "《明日方舟：终末地》二创制作工具" }
+                p { "Copyright (c) 2026 Chen Siyuan" }
+                p { "源代码（assets/ 除外）以 MIT 许可证开源。" }
+                p { "游戏相关素材的著作权归其各自权利人所有。" }
+                p {
+                    "本项目为非官方二创工具，与上海鹰角网络科技有限公司无隶属、授权或合作关系。"
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn LoadingPage(
+    progress: Signal<f32>,
+    mut on_loading_completed: Signal<bool>,
+    on_loading_animation_completed: Signal<bool>,
+) -> Element {
+    // 为了防止在 mount 之前就加载好了，没有动画。
+    let mut on_mounted = use_signal(|| false);
+    let height = use_memo(move || format!("height: {}vh;", progress() * 100f32));
+
+    use_effect(move || {
+        if *on_loading_completed.read() {
+            spawn(async move {
+                dioxus_sdk::time::sleep(std::time::Duration::from_millis(1000)).await;
+                on_loading_animation_completed.set(true);
+            });
+        }
+    });
+
+    // 万一 transitionend 没有派发。
+    use_effect(move || {
+        if progress() >= 1f32 - 1e-5 && !on_loading_completed() {
+            spawn(async move {
+                dioxus_sdk::time::sleep(std::time::Duration::from_millis(1500)).await;
+                on_loading_completed.set(true);
+            });
+        }
+    });
+
+    rsx! {
+        div {
+            class: "loading-page",
+            class: if on_loading_completed() { "loading-page-animation" },
+            onmounted: move |_| async move {
+                dioxus_sdk::time::sleep(std::time::Duration::from_millis(200)).await;
+                on_mounted.set(true);
+            },
+            div {
+                class: "loading-page-progress-bar",
+                class: if on_loading_completed() { "loading-page-progress-bar-animation" },
+                style: if on_mounted() { height() } else { "height: 0vh;" },
+
+                ontransitionend: move |_| async move {
+                    dioxus_sdk::time::sleep(std::time::Duration::from_millis(100)).await;
+                    on_loading_completed.set(progress() >= 1f32 - 1e-5);
+                },
+            }
         }
     }
 }

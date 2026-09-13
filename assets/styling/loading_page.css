@@ -1,0 +1,109 @@
+.loading-page {
+  position: absolute;
+  inset: 0;
+  z-index: 100000;
+
+  display: flex;
+  flex-direction: row;
+
+  background-color: oklch(20.5% 0 none);
+}
+
+.loading-page-progress-bar {
+  width: 10px;
+
+  transition: height 0.8s ease-in-out;
+
+  background-color: yellow;
+}
+
+.loading-page-project-info {
+  position: fixed;
+  right: 2rem;
+  bottom: 1.5rem;
+  z-index: 100001;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+
+  max-width: min(42rem, 80vw);
+
+  font-size: 0.85rem;
+  text-align: right;
+
+  pointer-events: none;
+}
+
+.loading-page-project-info-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+
+  margin-bottom: 0.2em;
+}
+
+.loading-page-project-info-header > img {
+  /* btn_SNS.png 的画布四周约有 15% 的透明留白，用负外边距裁掉，避免看起来偏小、间距偏大。 */
+  width: 5.6em;
+  height: 5.6em;
+  margin: -0.85em;
+}
+
+.loading-page-project-info-header > span {
+  font-size: 2.5em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.loading-page-project-info > p {
+  margin: 0;
+
+  color: #808080;
+  font-style: italic;
+  line-height: 1.25;
+}
+
+.loading-page-project-info-animation {
+  animation: loading-page-project-info-animation-keyframes 1s ease-in-out
+    forwards;
+}
+
+.loading-page-animation {
+  animation: loading-page-animation-keyframes 1s ease-in-out forwards;
+}
+
+.loading-page-progress-bar-animation {
+  animation: loading-page-progress-bar-animation-keyframes 1s ease-in-out
+    forwards;
+}
+
+@keyframes loading-page-project-info-animation-keyframes {
+  50% {
+    opacity: 1;
+  }
+
+  75% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes loading-page-animation-keyframes {
+  40% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(100vw);
+  }
+}
+
+@keyframes loading-page-progress-bar-animation-keyframes {
+  45% {
+    width: 100vw;
+  }
+}
