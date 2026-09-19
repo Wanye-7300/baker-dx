@@ -109,6 +109,7 @@ pub(crate) fn SessionUI() -> Element {
                     if replay_mode.read().is_none() {
                         InputArea { on_submit: submit }
                     }
+                    MainContentTopDecoration {}
                     if with_more_menu_open() {
                         MoreMenu { on_submit: submit }
                     }
@@ -441,6 +442,26 @@ fn SessionMainContent() -> Element {
         div { id: "session-main-content",
             for (avatar_on_left , avatar , messages) in messages {
                 MessageRow { avatar_on_left, avatar, messages }
+            }
+        }
+    }
+}
+
+#[component]
+fn MainContentTopDecoration() -> Element {
+    rsx! {
+        div {
+            id: "main-content-top-decoration",
+            div {
+                id: "main-content-top-decoration-left",
+            }
+            img {
+                id: "main-content-top-decoration-right",
+                src: crate::TOP_DECO_RIGHT,
+            }
+            img {
+                id: "main-content-top-decoration-colors",
+                src: crate::COLORS,
             }
         }
     }

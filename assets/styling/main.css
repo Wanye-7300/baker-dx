@@ -226,6 +226,7 @@ button {
 #session-main {
   --input-area-height: 80px;
   border: white solid 2px;
+  border-top-width: 0;
   border-radius: 0 0 15px 15px;
   flex: 1;
   position: relative;
@@ -250,6 +251,36 @@ button {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+#main-content-top-decoration {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+
+  display: flex;
+  flex-direction: row;
+}
+
+#main-content-top-decoration-left {
+  flex: 1;
+  margin-right: -3px;
+  border-top: white solid 2px;
+}
+
+#main-content-top-decoration-right {
+  flex: 0;
+  height: 10px;
+  transform: translateX(1.5px) translateY(-0.5px);
+  transform: translateX(1.5px) translateY(-0.6px);
+}
+
+#main-content-top-decoration-colors {
+  position: absolute;
+  mix-blend-mode: screen;
+  right: 40px;
+  height: 3.1px;
 }
 
 #input-area {
