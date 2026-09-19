@@ -130,7 +130,6 @@ pub(crate) fn SessionUI() -> Element {
                                 title: Some(String::from("对消息进行操作")),
                                 items: vec![
                                     MenuItem {
-                                        icon: Some(icons::DELETE_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
                                         label: String::from("删除"),
                                         on_click: EventHandler::new(move |_| async move {
                                             panic_try!(
@@ -141,18 +140,12 @@ pub(crate) fn SessionUI() -> Element {
                                         }),
                                     },
                                     MenuItem {
-                                        icon: Some(
-                                            icons::ADD_REACTION_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48,
-                                        ),
                                         label: String::from("添加Reaction…"),
                                         on_click: EventHandler::new(move |_| {
                                             with_reaction_menu_open.set(with_message_actions_menu_open());
                                         }),
                                     },
                                     MenuItem {
-                                        icon: Some(
-                                            icons::ARROW_INSERT_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48,
-                                        ),
                                         label: String::from("在此前插入消息…"),
                                         on_click: EventHandler::new(move |_| {
                                             input_area_mode
@@ -162,7 +155,6 @@ pub(crate) fn SessionUI() -> Element {
                                         }),
                                     },
                                     MenuItem {
-                                        icon: Some(icons::EDIT_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
                                         label: String::from("修改消息…"),
                                         on_click: EventHandler::new(move |_| {
                                             input_area_mode
@@ -172,7 +164,6 @@ pub(crate) fn SessionUI() -> Element {
                                         }),
                                     },
                                     MenuItem {
-                                        icon: Some(icons::REPLAY_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
                                         label: String::from("从此消息开始回放……"),
                                         on_click: EventHandler::new(move |_| {
                                             with_replay_menu_open.set(with_message_actions_menu_open());
@@ -196,7 +187,6 @@ pub(crate) fn SessionUI() -> Element {
                                 title: Some(String::from("对消息进行操作")),
                                 items: vec![
                                     MenuItem {
-                                        icon: Some(icons::DELETE_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
                                         label: String::from("删除"),
                                         on_click: EventHandler::new(move |_| async move {
                                             panic_try!(
@@ -207,9 +197,6 @@ pub(crate) fn SessionUI() -> Element {
                                         }),
                                     },
                                     MenuItem {
-                                        icon: Some(
-                                            icons::ARROW_INSERT_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48,
-                                        ),
                                         label: String::from("在此前插入消息…"),
                                         on_click: EventHandler::new(move |_| {
                                             input_area_mode
@@ -219,7 +206,6 @@ pub(crate) fn SessionUI() -> Element {
                                         }),
                                     },
                                     MenuItem {
-                                        icon: Some(icons::EDIT_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
                                         label: String::from("修改消息…"),
                                         on_click: EventHandler::new(move |_| {
                                             input_area_mode
@@ -229,7 +215,6 @@ pub(crate) fn SessionUI() -> Element {
                                         }),
                                     },
                                     MenuItem {
-                                        icon: Some(icons::REPLAY_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
                                         label: String::from("从此消息开始回放……"),
                                         on_click: EventHandler::new(move |_| {
                                             with_replay_menu_open.set(with_message_actions_menu_open());
@@ -251,7 +236,6 @@ pub(crate) fn SessionUI() -> Element {
                                 title: Some(String::from("回放模式")),
                                 items: vec![
                                     MenuItem {
-                                        icon: Some(icons::DELETE_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48),
                                         label: String::from("停止回放"),
                                         on_click: EventHandler::new(move |_| async move {
                                             replay_mode.set(None);

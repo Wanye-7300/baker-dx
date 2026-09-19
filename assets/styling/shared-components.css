@@ -1,0 +1,16 @@
+.shared-button {
+    padding: 10px;
+    background-color: transparent;
+    /*border: #00000060 solid 1px;*/
+    border-radius: 3px;
+    transition: background-color 0.1s linear, color 0.1s linear;
+}
+
+.shared-button:hover {
+    background-color: #00000010;
+}
+
+.shared-button:disabled {
+    background-color: transparent;
+    color: grey;
+}

@@ -239,7 +239,6 @@ pub(crate) fn GeneralMenu(
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct MenuItem {
-    pub(crate) icon: Option<Asset>,
     pub(crate) label: String,
     pub(crate) on_click: EventHandler,
 }
@@ -268,13 +267,7 @@ pub(crate) fn Menu(groups: Vec<MenuGroup>, on_close: EventHandler, x: f64, y: f6
                         },
 
                         div { class: "_menu-group-item-button-wrapper",
-                            if let Some(icon) = item.icon {
-                                img { src: icon }
-                            } else {
-                                span {}
-                            }
-
-                            {item.label}
+                            span { {item.label} }
                         }
                     }
                 }
@@ -352,13 +345,11 @@ pub(crate) fn ReactionMenu(
 
             button {
                 disabled: emoji_selected.read().is_none() || participants_ids_selected.is_empty(),
-                class: "_reaction_menu_button",
+                class: "shared-button _reaction_menu_button",
                 onclick: move |_| {
                     on_confirm.call((participants_ids_selected(), emoji_selected.unwrap()));
                     on_close.call(());
                 },
-
-                img { src: crate::shared::assets::icons::ADD_REACTION_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48 }
 
                 "确定"
             }
@@ -436,8 +427,6 @@ pub(crate) fn ReplayMenu(on_confirm: EventHandler<(i64, i64, i64)>, on_close: Ev
                         ));
                     on_close.call(());
                 },
-
-                img { src: crate::shared::assets::icons::REPLAY_48DP_000000_FILL0_WGHT400_GRAD0_OPSZ48 }
 
                 "确定"
             }

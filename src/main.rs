@@ -37,6 +37,7 @@ const SETTING_CSS: Asset = asset!("/assets/styling/setting.css");
 const MARKDOWN_CSS: Asset = asset!("/assets/styling/markdown.css");
 const MESSAGES_CSS: Asset = asset!("/assets/styling/messages.css");
 const LOADING_PAGE_CSS: Asset = asset!("/assets/styling/loading_page.css");
+const SHARED_COMPONENTS_CSS: Asset = asset!("/assets/styling/shared-components.css");
 
 const FONT_THIN: Asset = asset!("/assets/HarmonyOS_Sans_Thin.ttf");
 const FONT_LIGHT: Asset = asset!("/assets/HarmonyOS_Sans_Light.ttf");
@@ -214,6 +215,7 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: MARKDOWN_CSS }
         document::Link { rel: "stylesheet", href: MESSAGES_CSS }
         document::Link { rel: "stylesheet", href: LOADING_PAGE_CSS }
+        document::Link { rel: "stylesheet", href: SHARED_COMPONENTS_CSS }
 
         if shared::database::is_ready() {
             Router::<Route> {}

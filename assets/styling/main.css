@@ -609,8 +609,8 @@ button {
   user-select: text;
 }
 
-.message-bubble-self img,
-.message-bubble-others img {
+.message-bubble-self:not(.message-bubble-image) img,
+.message-bubble-others:not(.message-bubble-image) img {
   vertical-align: bottom;
   height: 1.6em;
   /* TODO: Emoji 的真实尺寸和大小看图。 */
