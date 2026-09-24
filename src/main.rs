@@ -71,6 +71,7 @@ const TASK_UNCOMPLETED: Asset = asset!("/assets/deco/task_uncompleted.png");
 const TOP_DECO_LEFT: Asset = asset!("/assets/deco/top-deco-left.png");
 const TOP_DECO_RIGHT: Asset = asset!("/assets/deco/top-deco-right.png");
 const COLORS: Asset = asset!("/assets/deco/colors.png");
+const ICON_NEW_SESSION: Asset = asset!("/assets/deco/icon_new_session.png");
 
 fn main() {
     dioxus::launch(App);

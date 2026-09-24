@@ -122,8 +122,27 @@ button {
 }
 
 #cards-new {
-  height: 32px;
-  border-radius: 16px;
+  height: 42px;
+  border-radius: 21px;
+  background-color: rgb(238, 236, 236);
+
+  padding: 0 21px;
+
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#cards-new span {
+  color: #444444;
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+#cards-new img {
+  height: 50%;
+  width: auto;
 }
 
 .card {

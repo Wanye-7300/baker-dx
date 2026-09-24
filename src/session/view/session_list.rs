@@ -36,7 +36,8 @@ pub(crate) fn SessionList(session_name: Signal<String>, participants_ids: Signal
                         DialogNewSession { session_name, participants_ids, uuid }
                     });
                 },
-                "添加新会话"
+                span { "添加新会话" }
+                img { src: crate::ICON_NEW_SESSION }
             }
         }
     }
