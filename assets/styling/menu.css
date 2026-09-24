@@ -1,20 +1,25 @@
-._menu {
-  --menu-padding: 4px;
-  position: fixed;
+._menu,
+.dialog {
   background-color: #ffffffd5;
   backdrop-filter: blur(8px);
-  z-index: 325;
-  padding: var(--menu-padding);
   border-radius: 8px;
-  min-width: 150px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
-  max-width: calc(100vw - 16px);
-  max-height: calc(100vh - 16px);
-  overflow-y: auto;
   border: #00000060 solid 1px;
 }
 
-._menu * {
+._menu {
+  --menu-padding: 4px;
+  position: fixed;
+  z-index: 325;
+  padding: var(--menu-padding);
+  min-width: 150px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+
+._menu *,
+.dialog * {
   color: black;
 }
 

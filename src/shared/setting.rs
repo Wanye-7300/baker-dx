@@ -2,7 +2,7 @@ use dioxus::prelude::*;
 use dioxus::web::WebFileExt as _;
 use uuid::Uuid;
 
-use crate::ui::components::RichText;
+use crate::ui::components::{InputComponent, InputComponentType, InputType, RichText};
 
 /// 设置窗口在根页面时的标题；进入子页后由当前子页名替换。
 pub(crate) const SETTING_WINDOW_TITLE: &str = "/ Baker // 设置";
@@ -336,17 +336,18 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
             rsx! {
                 div { class: "gsp-item",
 
-                    SettingItemLabel { name, desc }
+                    SettingItemLabel { name: name.clone(), desc }
 
-                    input {
-                        class: "gsp-item-input",
-                        r#type: "text",
-                        value: current,
-
-                        oninput: move |event| {
-                            let new_value = event.value();
-                            value.set(SettingItemValue::Str(new_value.clone()));
-                            emit_change(&on_change, SettingItemValue::Str(new_value));
+                    InputComponent {
+                        id: "setting-input-{name}",
+                        label: name.clone(),
+                        component_type: InputComponentType::Text,
+                        value: Some(current),
+                        on_value_change: move |new_value| {
+                            if let InputType::Text(new_value) = new_value {
+                                value.set(SettingItemValue::Str(new_value.clone()));
+                                emit_change(&on_change, SettingItemValue::Str(new_value));
+                            }
                         },
                     }
                 }

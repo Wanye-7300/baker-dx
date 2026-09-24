@@ -131,9 +131,10 @@ pub(crate) fn InputComponent(
     label: String,
     component_type: InputComponentType,
     on_value_change: EventHandler<InputType>,
+    #[props(default)] value: Option<String>,
     #[props(extends = GlobalAttributes, extends = div)] attributes: Vec<Attribute>,
 ) -> Element {
-    let mut value = use_signal(String::new);
+    let mut local_value = use_signal(String::new);
 
     let r#type = match component_type {
         InputComponentType::Text => "text",
@@ -145,12 +146,12 @@ pub(crate) fn InputComponent(
         div { class: "component-input", ..attributes,
             input {
                 id: id.clone(),
-                value: value(),
+                value: value.unwrap_or_else(|| local_value()),
                 placeholder: " ",
                 r#type,
                 oninput: move |evt| {
                     let new_value = evt.value();
-                    value.set(new_value.clone());
+                    local_value.set(new_value.clone());
                     match component_type {
                         InputComponentType::Text => {
                             on_value_change.call(InputType::Text(new_value));

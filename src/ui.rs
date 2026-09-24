@@ -1,3 +1,4 @@
+use self::components::{InputComponent, InputComponentType, InputType};
 use crate::operator::model::*;
 use crate::operator::view_model::OperatorViewModel;
 use crate::session::model::*;
@@ -24,7 +25,7 @@ impl Drop for ObjectUrl {
 /// 判定为「拖动」而非「点击」的位移阈值（像素）。
 const DRAG_THRESHOLD: f64 = 3.0;
 
-/// 标题栏高度，与 CSS 中 `.win10-dialog .dialog-title` 保持一致。
+/// 标题栏高度，与 CSS 中 `.dialog .dialog-title` 保持一致。
 const CAPTION_HEIGHT: f64 = 32.0;
 
 /// 窗口被拖出视口时，标题栏至少要留在视口内的宽度与高度，保证窗口还能再次被拖回来。
@@ -60,7 +61,9 @@ fn viewport_size() -> (f64, f64) {
 
 /// 读取对话框窗口本体在视口中的矩形：left、top、width、height。
 fn dialog_rect(uuid: &Uuid) -> Option<(f64, f64, f64, f64)> {
-    let element = web_sys::window()?.document()?.get_element_by_id(&format!("win10-dialog-{uuid}"))?;
+    let element = web_sys::window()?
+        .document()?
+        .get_element_by_id(&format!("dialog-{uuid}"))?;
     let rect = element.get_bounding_client_rect();
 
     Some((rect.left(), rect.top(), rect.width(), rect.height()))
@@ -286,15 +289,15 @@ pub(crate) fn Dialog(
             },
             div {
                 key: "{uuid.to_string()}",
-                id: "win10-dialog-{uuid}",
-                class: "dialog win10-dialog flex flex-column",
+                id: "dialog-{uuid}",
+                class: "dialog flex flex-column",
                 style: position()
                     .map(|(left, top)| format!("left: {left}px; top: {top}px; bottom: auto;"))
                     .unwrap_or_default(),
                 onclick: move |e| {
                     e.stop_propagation();
                 },
-                // Windows 10 caption：左侧标题 + 右侧关闭按钮；标题栏本身是拖动把手
+                // 左侧标题 + 右侧关闭按钮；标题栏本身是拖动把手
                 div {
                     class: "dialog-title flex flex-row",
                     onpointerdown: move |evt| {
@@ -336,7 +339,7 @@ pub(crate) fn Dialog(
                 div { class: "dialog-content", {children} }
                 div { class: "dialog-buttons flex flex-row",
                     button {
-                        class: "dialog-buttons-confirm win10-button",
+                        class: "dialog-buttons-confirm",
                         disabled: confirm_disabled,
                         onclick: move |_| on_confirm.call(()),
                         "好"
@@ -398,25 +401,27 @@ pub(crate) fn DialogNewSession(
             },
             uuid,
             div { id: "new-sessions-dialog", class: "flex flex-column",
-                input {
-                    class: "form-input",
-                    placeholder: "会话名",
-                    value: session_name,
-                    onchange: move |evt| {
-                        *session_name.write() = evt.value();
+                InputComponent {
+                    id: "session-name-{uuid}",
+                    label: "会话名",
+                    component_type: InputComponentType::Text,
+                    value: Some(session_name()),
+                    on_value_change: move |value| {
+                        if let InputType::Text(value) = value {
+                            session_name.set(value);
+                        }
                     },
                 }
 
-                // Win32 GroupBox：参与者分组
-                fieldset { class: "win10-groupbox",
+                fieldset { class: "dialog-groupbox",
                     legend { "参与者" }
                     ParticipantsSelection { participants_ids }
                 }
 
-                div { class: "win10-actions",
+                div { class: "dialog-actions",
                     button {
                         id: "button-new-operator",
-                        class: "win10-button",
+                        class: "dialog-button",
                         r#type: "button",
                         onclick: move |_| {
                             let uuid_neo = Uuid::new_v4();
@@ -473,17 +478,16 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                             class: "new-operator-avatar",
                             src: if new_operator_avatar_id.is_empty() { Avatar::None.to_asset_operator() } else { Avatar::Preset(new_operator_avatar_id()).to_asset_operator() },
                         }
-                        div { class: "",
-                            label { "干员名" }
-                            input {
-                                r#type: "text",
-                                class: "form-input",
-                                placeholder: "",
-                                value: name,
-                                onchange: move |evt| {
-                                    *name.write() = evt.value();
-                                },
-                            }
+                        InputComponent {
+                            id: "operator-name-{uuid}",
+                            label: "干员名",
+                            component_type: InputComponentType::Text,
+                            value: Some(name()),
+                            on_value_change: move |value| {
+                                if let InputType::Text(value) = value {
+                                    name.set(value);
+                                }
+                            },
                         }
 
                     }
@@ -552,20 +556,26 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                                 if let Some(selected_id) = edit_selected_operator_id() {
                                     if selected_id == id {
                                         div { class: "edit-operator",
-                                            input {
-                                                r#type: "text",
-                                                value: "{edit_selected_operator_name()}",
-                                                onchange: move |evt| {
-                                                    edit_selected_operator_name.set(evt.value());
+                                            InputComponent {
+                                                id: "operator-rename-{uuid}-{id}",
+                                                label: "新干员名",
+                                                component_type: InputComponentType::Text,
+                                                value: Some(edit_selected_operator_name()),
+                                                on_value_change: move |value| {
+                                                    if let InputType::Text(value) = value {
+                                                        edit_selected_operator_name.set(value);
+                                                    }
                                                 },
                                             }
                                             button {
+                                                class: "dialog-button",
                                                 onclick: move |_| {
                                                     edit_selected_operator_id.set(None);
                                                 },
                                                 "取消"
                                             }
                                             button {
+                                                class: "dialog-button",
                                                 onclick: {
                                                     move |_| {
                                                         // TODO: Unicode 规范化
