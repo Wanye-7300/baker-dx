@@ -861,7 +861,7 @@ button {
 }
 
 .dialog {
-  position: absolute;
+  position: fixed;
   left: 10px;
   bottom: 10px;
   width: max-content;

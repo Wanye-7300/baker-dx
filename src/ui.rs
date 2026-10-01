@@ -7,6 +7,7 @@ use crate::session::view::session_list::*;
 use crate::session::view_model::session_view_model::SessionViewModel;
 use crate::shared::assets;
 
+use crate::shared::dialogs::{DialogUsage, DialogsManager};
 use dioxus::prelude::*;
 use fnv::FnvHashSet;
 use uuid::Uuid;
@@ -22,9 +23,6 @@ impl Drop for ObjectUrl {
     }
 }
 
-/// 判定为「拖动」而非「点击」的位移阈值（像素）。
-const DRAG_THRESHOLD: f64 = 3.0;
-
 /// 标题栏高度，与 CSS 中 `.dialog .dialog-title` 保持一致。
 const CAPTION_HEIGHT: f64 = 32.0;
 
@@ -35,16 +33,13 @@ const CAPTION_VISIBLE_HEIGHT: f64 = 8.0;
 /// 窗口拖动状态。
 #[derive(Clone, Copy, PartialEq, Debug)]
 struct DialogDrag {
+    /// 发起拖动的指针，避免其他触点干扰。
+    pointer_id: i32,
     /// 按下时指针相对窗口左上角的偏移。
     grab_x: f64,
     grab_y: f64,
     /// 窗口宽度，用于限制窗口横向拖出视口的距离。
     width: f64,
-    /// 按下时指针所在的视口坐标，用于判断是否超过拖动阈值。
-    start_x: f64,
-    start_y: f64,
-    /// 本次按下是否已经构成拖动。
-    moved: bool,
 }
 
 /// 读取视口尺寸。
@@ -53,20 +48,25 @@ fn viewport_size() -> (f64, f64) {
         return (0.0, 0.0);
     };
 
-    let width = window.inner_width().ok().and_then(|value| value.as_f64()).unwrap_or(0.0);
-    let height = window.inner_height().ok().and_then(|value| value.as_f64()).unwrap_or(0.0);
+    let width = window
+        .inner_width()
+        .ok()
+        .and_then(|value| value.as_f64())
+        .unwrap_or(0.0);
+    let height = window
+        .inner_height()
+        .ok()
+        .and_then(|value| value.as_f64())
+        .unwrap_or(0.0);
 
     (width, height)
 }
 
-/// 读取对话框窗口本体在视口中的矩形：left、top、width、height。
-fn dialog_rect(uuid: &Uuid) -> Option<(f64, f64, f64, f64)> {
-    let element = web_sys::window()?
+/// 获取窗口本体，用于读取位置和捕获拖动指针。
+fn dialog_element(uuid: &Uuid) -> Option<web_sys::Element> {
+    web_sys::window()?
         .document()?
-        .get_element_by_id(&format!("dialog-{uuid}"))?;
-    let rect = element.get_bounding_client_rect();
-
-    Some((rect.left(), rect.top(), rect.width(), rect.height()))
+        .get_element_by_id(&format!("dialog-{uuid}"))
 }
 
 /// 允许窗口被拖出视口，但始终保留一部分标题栏可见，保证还能拖回来。
@@ -88,9 +88,8 @@ fn clamp_position(left: f64, top: f64, width: f64, viewport: (f64, f64)) -> (f64
 pub(super) fn Baker() -> Element {
     use_hook(crate::shared::panic::install_panic_hook);
 
-    let baker_state = use_context::<crate::BakerState>();
+    let dialogs_manager = use_context::<DialogsManager>();
     let settings_state = use_context::<crate::settings::state::SettingsState>();
-    let dialogs = baker_state.dialogs.read();
 
     let mut with_settings_open = use_signal(|| false);
 
@@ -124,9 +123,7 @@ pub(super) fn Baker() -> Element {
             }
         }
 
-        for (_uuid , dialog) in dialogs.iter() {
-            {dialog}
-        }
+        {dialogs_manager.rendered()}
 
         if with_settings_open() {
             crate::settings::components::Settings {
@@ -220,36 +217,35 @@ pub(crate) fn Dialog(
     on_confirm: EventHandler,
     uuid: Uuid,
     /// 关闭方式：传入时交给外部处理（例如设置窗口的开关信号），否则把这个对话框从 dialogs 表里移除
-    #[props(default)] on_close: Option<EventHandler>,
+    #[props(default)]
+    on_close: Option<EventHandler>,
     #[props(default)] confirm_disabled: bool,
     children: Element,
 ) -> Element {
-    let dialogs = use_context::<crate::BakerState>().dialogs;
-
-    // 拖动相关状态（每个对话框实例各自一份；未拖动过时位置完全交给 CSS）
+    let dialogs_manager = use_context::<DialogsManager>();
+    // 仅记录拖动手势；窗口位置由拖动事件直接写入 DOM，初始位置交给 CSS。
     let mut drag = use_signal(|| None::<DialogDrag>);
-    let mut position = use_signal(|| None::<(f64, f64)>);
-    // 拖动结束后需要吞掉随之而来的 backdrop click，否则「拖到空白处松手」会被当成点击背景而关闭对话框
-    let mut swallow_click = use_signal(|| false);
 
-    let close = move || {
-        if let Some(handler) = on_close {
-            handler.call(());
-        } else {
-            let mut dialogs = dialogs;
-            dialogs.write().remove(&uuid);
+    let mut end_drag = move |evt: PointerEvent| {
+        if drag().is_some_and(|state| state.pointer_id == evt.pointer_id()) {
+            drag.set(None);
         }
     };
 
     rsx! {
         div {
-            class: "backdrop",
             key: "{uuid}",
-            // 背景铺满视口，指针在窗口内移动/抬起的事件会冒泡到这里，因此无需 pointer capture
+            id: "dialog-{uuid}",
+            class: "dialog flex flex-column",
+            onclick: move |evt| evt.stop_propagation(),
+            // 标题栏按下时捕获指针，移出窗口后仍可接收移动和松开事件。
             onpointermove: move |evt| {
                 let Some(state) = drag() else {
                     return;
                 };
+                if state.pointer_id != evt.pointer_id() {
+                    return;
+                }
 
                 let point = evt.client_coordinates();
                 let (left, top) = clamp_position(
@@ -259,91 +255,80 @@ pub(crate) fn Dialog(
                     viewport_size(),
                 );
 
-                if position() != Some((left, top)) {
-                    position.set(Some((left, top)));
-                }
-
-                if !state.moved && (point.x - state.start_x).abs() + (point.y - state.start_y).abs() > DRAG_THRESHOLD {
-                    drag.set(Some(DialogDrag { moved: true, ..state }));
+                if let Some(element) = dialog_element(&uuid) {
+                    // RSX 不管理此 style，避免重渲染覆盖拖动后的位置。
+                    let _ = element
+                        .set_attribute(
+                            "style",
+                            &format!("left: {left}px; top: {top}px; bottom: auto;"),
+                        );
                 }
             },
-            onpointerup: move |_| {
-                if drag().is_some_and(|state| state.moved) {
-                    swallow_click.set(true);
-                }
-                drag.set(None);
-            },
-            onpointercancel: move |_| drag.set(None),
-            onpointerleave: move |_| drag.set(None),
-            // 在背景上按下时清掉残留状态；点击背景关闭对话框的行为保持不变
-            onpointerdown: move |_| {
-                drag.set(None);
-                swallow_click.set(false);
-            },
-            onclick: move |_| {
-                if swallow_click() {
-                    swallow_click.set(false);
-                    return;
-                }
-                close();
-            },
+            // pointerup / pointercancel 后浏览器自动释放捕获；意外丢失捕获也结束拖动。
+            onpointerup: move |evt| end_drag(evt),
+            onpointercancel: move |evt| end_drag(evt),
+            onlostpointercapture: move |evt| end_drag(evt),
+            // 左侧标题 + 右侧关闭按钮；标题栏本身是拖动把手
             div {
-                key: "{uuid.to_string()}",
-                id: "dialog-{uuid}",
-                class: "dialog flex flex-column",
-                style: position()
-                    .map(|(left, top)| format!("left: {left}px; top: {top}px; bottom: auto;"))
-                    .unwrap_or_default(),
-                onclick: move |e| {
-                    e.stop_propagation();
+                class: "dialog-title flex flex-row",
+                onpointerdown: move |evt| {
+                    evt.stop_propagation();
+                    if drag().is_some() {
+                        return;
+                    }
+                    let Some(element) = dialog_element(&uuid) else {
+                        return;
+                    };
+                    let rect = element.get_bounding_client_rect();
+                    let pointer_id = evt.pointer_id();
+                    if element.set_pointer_capture(pointer_id).is_err() {
+                        return;
+                    }
+
+                    let point = evt.client_coordinates();
+                    drag.set(
+                        Some(DialogDrag {
+                            pointer_id,
+                            grab_x: point.x - rect.left(),
+                            grab_y: point.y - rect.top(),
+                            width: rect.width(),
+                        }),
+                    );
                 },
-                // 左侧标题 + 右侧关闭按钮；标题栏本身是拖动把手
-                div {
-                    class: "dialog-title flex flex-row",
-                    onpointerdown: move |evt| {
-                        let Some((left, top, width, _height)) = dialog_rect(&uuid) else {
-                            return;
-                        };
-
-                        let point = evt.client_coordinates();
-                        drag.set(Some(DialogDrag {
-                            grab_x: point.x - left,
-                            grab_y: point.y - top,
-                            width,
-                            start_x: point.x,
-                            start_y: point.y,
-                            moved: false,
-                        }));
-
-                        // 不要冒泡到背景的 pointerdown，否则刚建立的拖动状态会被清掉
-                        evt.stop_propagation();
-                    },
-                    span { class: "dialog-title-text", "{title}" }
-                    button {
-                        class: "dialog-title-close",
-                        r#type: "button",
-                        title: "关闭",
-                        aria_label: "关闭",
-                        // 从关闭按钮上按下不参与拖动
-                        onpointerdown: move |evt| evt.stop_propagation(),
-                        onclick: move |_| close(),
-                        svg {
-                            class: "caption-glyph",
-                            view_box: "0 0 10 10",
-                            width: "10",
-                            height: "10",
-                            path { d: "M0 0 L10 10 M10 0 L0 10" }
+                span { class: "dialog-title-text", "{title}" }
+                button {
+                    class: "dialog-title-close",
+                    r#type: "button",
+                    title: "关闭",
+                    aria_label: "关闭",
+                    // 从关闭按钮上按下不参与拖动
+                    onpointerdown: move |evt| evt.stop_propagation(),
+                    onclick: {
+                        let mut dialogs_manager = dialogs_manager.clone();
+                        move |_| {
+                            if let Some(handler) = on_close {
+                                handler.call(());
+                            } else {
+                                dialogs_manager.remove_dialog(uuid);
+                            }
                         }
+                    },
+                    svg {
+                        class: "caption-glyph",
+                        view_box: "0 0 10 10",
+                        width: "10",
+                        height: "10",
+                        path { d: "M0 0 L10 10 M10 0 L0 10" }
                     }
                 }
-                div { class: "dialog-content", {children} }
-                div { class: "dialog-buttons flex flex-row",
-                    button {
-                        class: "dialog-buttons-confirm",
-                        disabled: confirm_disabled,
-                        onclick: move |_| on_confirm.call(()),
-                        "好"
-                    }
+            }
+            div { class: "dialog-content", {children} }
+            div { class: "dialog-buttons flex flex-row",
+                button {
+                    class: "dialog-buttons-confirm",
+                    disabled: confirm_disabled,
+                    onclick: move |_| on_confirm.call(()),
+                    "好"
                 }
             }
         }
@@ -356,7 +341,7 @@ pub(crate) fn DialogNewSession(
     participants_ids: Signal<fnv::FnvHashSet<Uuid>>,
     uuid: Uuid,
 ) -> Element {
-    let mut baker_state = use_context::<crate::BakerState>();
+    let mut dialogs_manager = use_context::<DialogsManager>();
     let session_view_model = use_context::<SessionViewModel>();
     let mut sessions = session_view_model.sessions;
     let operator_view_model = use_context::<OperatorViewModel>();
@@ -368,36 +353,38 @@ pub(crate) fn DialogNewSession(
         Dialog {
             title,
             confirm_disabled: session_name.read().trim().is_empty() || participants_ids.read().is_empty(),
-            on_confirm: move |_| {
-                let mut baker_state = use_context::<crate::BakerState>();
-                let session_name = session_name.read().trim().to_owned();
+            on_confirm: {
+                let mut dialogs_manager = dialogs_manager.clone();
+                move |_| {
+                    let session_name = session_name.read().trim().to_owned();
 
-                if session_name.is_empty() || participants_ids.read().is_empty() {
-                    return;
+                    if session_name.is_empty() || participants_ids.read().is_empty() {
+                        return;
+                    }
+
+                    sessions
+                        .write()
+                        .push_session(
+                            Session::new(
+                                session_name,
+                                match participants_ids.read().iter().count() {
+                                    1 => {
+                                        operators
+                                            .read()
+                                            .get(*participants_ids.read().iter().next().unwrap())
+                                            .unwrap()
+                                            .get_avatar_originally()
+                                            .clone()
+                                    }
+                                    _ => Avatar::None,
+                                },
+                                participants_ids.read().iter().cloned().collect::<Vec<Uuid>>(),
+                            ),
+                        )
+                        .unwrap();
+                    dialogs_manager.remove_dialog(uuid);
+                    participants_ids.clear();
                 }
-
-                sessions
-                    .write()
-                    .push_session(
-                        Session::new(
-                            session_name,
-                            match participants_ids.read().iter().count() {
-                                1 => {
-                                    operators
-                                        .read()
-                                        .get(*participants_ids.read().iter().next().unwrap())
-                                        .unwrap()
-                                        .get_avatar_originally()
-                                        .clone()
-                                }
-                                _ => Avatar::None,
-                            },
-                            participants_ids.read().iter().cloned().collect::<Vec<Uuid>>(),
-                        ),
-                    )
-                    .unwrap();
-                baker_state.dialogs.write().remove(&uuid);
-                participants_ids.clear();
             },
             uuid,
             div { id: "new-sessions-dialog", class: "flex flex-column",
@@ -423,12 +410,15 @@ pub(crate) fn DialogNewSession(
                         id: "button-new-operator",
                         class: "dialog-button",
                         r#type: "button",
-                        onclick: move |_| {
-                            let uuid_neo = Uuid::new_v4();
-                            baker_state.dialogs.write().insert(uuid_neo, rsx! {
-                                DialogManageOperators { uuid: uuid_neo }
-                            });
-                            baker_state.dialogs.write().remove(&uuid);
+                        onclick: {
+                            let mut dialogs_manager = dialogs_manager.clone();
+                            move |_| {
+                                let uuid_neo = Uuid::new_v4();
+                                dialogs_manager.append_dialog(uuid_neo, DialogUsage::ManageOperators, rsx! {
+                                    DialogManageOperators { uuid: uuid_neo }
+                                }).unwrap();
+                                dialogs_manager.remove_dialog(uuid);
+                            }
                         },
                         "添加新干员"
                     }

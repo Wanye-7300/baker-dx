@@ -39,6 +39,12 @@ pub(crate) fn Settings(on_close: EventHandler) -> Element {
             SETTING_WINDOW_TITLE.to_string(),
             SettingItemPage::new()
                 .with_child(SettingItem::new(
+                    "管理干员…".to_owned(),
+                    None,
+                    SettingItemType::Page(SettingItemPage::new()),
+                    Some(EventHandler::new(move |_| {})),
+                ))
+                .with_child(SettingItem::new(
                     "墙纸".to_owned(),
                     Some("设置应用背景的墙纸。".to_owned()),
                     SettingItemType::Image {
@@ -81,12 +87,21 @@ pub(crate) fn Settings(on_close: EventHandler) -> Element {
                 .with_child(SettingItem::new(
                     "关于项目".to_owned(),
                     None,
-                    SettingItemType::Page(SettingItemPage::new().with_child(SettingItem::new(
-                        "本项目采用 MIT 协议".to_owned(),
-                        Some(include_str!("../../LICENSE").to_owned()),
-                        SettingItemType::Empty,
-                        None,
-                    ))),
+                    SettingItemType::Page(
+                        SettingItemPage::new()
+                            .with_child(SettingItem::new(
+                                "作者".to_owned(),
+                                Some("Wanye_7300".to_owned()),
+                                SettingItemType::Empty,
+                                None,
+                            ))
+                            .with_child(SettingItem::new(
+                                "本项目采用 MIT 协议".to_owned(),
+                                Some(include_str!("../../LICENSE").to_owned()),
+                                SettingItemType::Empty,
+                                None,
+                            )),
+                    ),
                     None,
                 )),
             true,

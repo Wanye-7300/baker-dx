@@ -16,11 +16,6 @@ mod operator;
 mod session;
 mod shared;
 
-#[derive(Clone, Debug)]
-struct BakerState {
-    dialogs: Signal<fnv::FnvHashMap<Uuid, Element>>,
-}
-
 #[derive(Debug, Clone, Routable, PartialEq)]
 #[rustfmt::skip]
 enum Route {
@@ -77,12 +72,6 @@ fn main() {
     dioxus::launch(App);
 }
 
-fn provide_baker_state() {
-    let dialogs = use_signal(fnv::FnvHashMap::default);
-
-    use_context_provider(|| BakerState { dialogs });
-}
-
 fn provide_settings() {
     let image = use_signal(|| shared::utils::get_item_or_default("wallpaper", || None).unwrap_or(None));
     let endministrator_avatar = use_signal(|| {
@@ -102,8 +91,8 @@ fn provide_settings() {
 
 #[component]
 fn App() -> Element {
-    provide_baker_state();
     provide_settings();
+    shared::dialogs::DialogsManager::provide_dialog_manager();
     crate::session::view_model::input_view_model::InputViewModel::use_input_view_model_provider();
     crate::session::view_model::session_view_model::SessionViewModel::use_session_view_model_provider().unwrap();
     crate::session::view_model::session_view_model::SessionUIViewModel::use_session_ui_view_model_provider();

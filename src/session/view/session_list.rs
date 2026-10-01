@@ -10,10 +10,11 @@ use crate::{
 use dioxus::prelude::*;
 use fnv::FnvHashSet;
 use uuid::Uuid;
+use crate::shared::dialogs::{DialogUsage, DialogsManager};
 
 #[component]
 pub(crate) fn SessionList(session_name: Signal<String>, participants_ids: Signal<FnvHashSet<Uuid>>) -> Element {
-    let mut baker_state = use_context::<crate::BakerState>();
+    let mut dialogs_manager = use_context::<DialogsManager>();
     let session_view_model = use_context::<SessionViewModel>();
 
     rsx! {
@@ -32,9 +33,9 @@ pub(crate) fn SessionList(session_name: Signal<String>, participants_ids: Signal
                 id: "cards-new",
                 onclick: move |_| {
                     let uuid = Uuid::new_v4();
-                    baker_state.dialogs.write().insert(uuid, rsx! {
+                    dialogs_manager.append_dialog(uuid, DialogUsage::NewSession, rsx! {
                         DialogNewSession { session_name, participants_ids, uuid }
-                    });
+                    }).unwrap();
                 },
                 span { "添加新会话" }
                 img { src: crate::ICON_NEW_SESSION }

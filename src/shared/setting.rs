@@ -65,10 +65,9 @@ impl SettingItemType {
                 None => SettingItemValue::None,
             },
 
-            SettingItemType::Button
-            | SettingItemType::Empty
-            | SettingItemType::Header
-            | SettingItemType::Page(_) => SettingItemValue::None,
+            SettingItemType::Button | SettingItemType::Empty | SettingItemType::Header | SettingItemType::Page(_) => {
+                SettingItemValue::None
+            }
         }
     }
 
@@ -388,7 +387,10 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
         // ====================================================
         // Selection
         // ====================================================
-        SettingItemType::Selection { selections, value: initial } => {
+        SettingItemType::Selection {
+            selections,
+            value: initial,
+        } => {
             let current = {
                 match &*value.read() {
                     SettingItemValue::Selection(value) => value.clone(),
@@ -459,9 +461,9 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
                                         with_input_disabled.set(true);
 
                                         let uuid = Uuid::new_v4();
-                                        crate::shared::database::save_multimedia(uuid, file.into()).await.unwrap();
-
-                                        // 旧的图不再被引用，顺手删掉，避免媒体库里留孤儿
+                                        crate::shared::database::save_multimedia(uuid, file.into())
+                                            .await
+                                            .unwrap();
                                         let previous = match &*value.read() {
                                             SettingItemValue::Image(previous) => Some(*previous),
                                             _ => None,
@@ -469,7 +471,6 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
                                         if let Some(previous) = previous {
                                             crate::shared::database::remove_multimedia(previous).await.unwrap();
                                         }
-
                                         value.set(SettingItemValue::Image(uuid));
                                         with_input_disabled.set(false);
                                         emit_change(&on_change, SettingItemValue::Image(uuid));
@@ -543,7 +544,12 @@ pub(crate) fn SettingItemView(item: SettingItem, on_open_page: EventHandler<()>)
                     r#type: "button",
 
                     onclick: move |_| {
-                        on_open_page.call(());
+                        if item.on_change.is_some() {
+                            emit_change(&item.on_change, SettingItemValue::None);
+                        } else {
+                            on_open_page.call(());
+                        }
+
                     },
 
                     span {
