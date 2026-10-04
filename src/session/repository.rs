@@ -306,7 +306,7 @@ pub(crate) struct SessionRepository {
 }
 
 impl SessionRepository {
-    fn save(&self) -> anyhow::Result<()> {
+    pub(crate) fn save(&self) -> anyhow::Result<()> {
         utils::set_item(SESSION_KEY, &self.sessions)
     }
 

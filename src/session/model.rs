@@ -84,6 +84,7 @@ impl MessageType {
             || matches!(self, MessageType::Sticker(_))
     }
 
+    #[allow(unused)]
     pub(crate) unsafe fn as_text_mut_unchecked(&mut self) -> &mut String {
         match self {
             MessageType::Text(text) => text,

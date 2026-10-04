@@ -102,9 +102,11 @@ pub(super) fn Baker() -> Element {
                     move |evt| {
                         evt.stop_propagation();
                         let uuid = Uuid::new_v4();
-                        dialogs_manager.append_dialog(uuid, DialogUsage::GeneralSettingPage, rsx! {
-                            crate::settings::components::Settings { uuid }
-                        }).unwrap();
+                        dialogs_manager
+                            .append_dialog(uuid, DialogUsage::GeneralSettingPage, rsx! {
+                                crate::settings::components::Settings { uuid }
+                            })
+                            .unwrap();
                     }
                 },
                 id: "title",
@@ -262,7 +264,9 @@ pub(crate) fn Dialog(
                     let _ = element
                         .set_attribute(
                             "style",
-                            &format!("left: {left}px; top: {top}px; bottom: auto; translate: none;"),
+                            &format!(
+                                "left: {left}px; top: {top}px; bottom: auto; translate: none;",
+                            ),
                         );
                 }
             },
@@ -446,7 +450,10 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
     let title = use_signal(|| "管理干员列表".to_string());
 
     rsx! {
-        Dialog { title, on_confirm: move |_| dialogs_manager.remove_dialog(uuid), uuid,
+        Dialog {
+            title,
+            on_confirm: move |_| dialogs_manager.remove_dialog(uuid),
+            uuid,
 
             div { id: "new-operator-dialog", class: "flex flex-column",
                 div { class: "menu",

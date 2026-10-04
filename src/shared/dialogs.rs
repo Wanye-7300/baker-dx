@@ -25,7 +25,7 @@ pub(crate) struct DialogsManager {
 
 impl DialogsManager {
     pub(crate) fn provide_dialog_manager() {
-        let dialogs = use_signal(|| vec![]);
+        let dialogs = use_signal(Vec::new);
         use_context_provider(|| DialogsManager { dialogs });
     }
 
@@ -65,6 +65,16 @@ impl DialogsManager {
                 entry.layer -= 1;
             }
         }
+    }
+
+    pub(crate) fn remove_dialog_by_usage(&mut self, usage: DialogUsage) {
+        // TODO: 优化这里，不需要找两次？
+
+        let Some(index) = self.dialogs.read().iter().position(|x| x.usage == usage) else {
+            return;
+        };
+        let uuid = self.dialogs.get(index).unwrap().uuid;
+        self.remove_dialog(uuid);
     }
 
     pub(crate) fn bring_to_front(&mut self, uuid: Uuid) {

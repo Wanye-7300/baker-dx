@@ -146,7 +146,7 @@ pub(crate) fn InputComponent(
         div { class: "component-input", ..attributes,
             input {
                 id: id.clone(),
-                value: value.unwrap_or_else(|| local_value()),
+                value: value.unwrap_or_else(&*local_value),
                 placeholder: " ",
                 r#type,
                 oninput: move |evt| {

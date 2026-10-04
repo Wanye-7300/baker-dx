@@ -47,9 +47,15 @@ pub(crate) fn Settings(uuid: Uuid) -> Element {
                     SettingItemType::Button,
                     Some(EventHandler::new(move |_: SettingItemValue| {
                         let uuid = Uuid::new_v4();
-                        dialogs_manager.append_dialog(uuid, DialogUsage::ManageOperators, rsx! {
-                            DialogManageOperators { uuid }
-                        }).unwrap();
+                        dialogs_manager
+                            .append_dialog(
+                                uuid,
+                                DialogUsage::ManageOperators,
+                                rsx! {
+                                    DialogManageOperators { uuid }
+                                },
+                            )
+                            .unwrap();
                     })),
                 ))
                 .with_child(SettingItem::new(

@@ -7,7 +7,6 @@
 use crate::operator::model::Avatar;
 use crate::ui::Baker;
 use dioxus::prelude::*;
-use uuid::Uuid;
 
 mod settings;
 mod ui;
@@ -73,9 +72,8 @@ fn main() {
 }
 
 fn provide_settings() {
-    let agreement_accepted = use_signal(|| {
-        shared::utils::get_item_or_default("agreement_accepted", || false).unwrap_or(false)
-    });
+    let agreement_accepted =
+        use_signal(|| shared::utils::get_item_or_default("agreement_accepted", || false).unwrap_or(false));
     let image = use_signal(|| shared::utils::get_item_or_default("wallpaper", || None).unwrap_or(None));
     let endministrator_avatar = use_signal(|| {
         shared::utils::get_item_or_default("E_avatar", || Avatar::Preset("endministratorf".to_owned()))
@@ -254,9 +252,7 @@ fn App() -> Element {
         if !agreement_accepted() {
             div { class: "loading-page-agreement",
                 if agreement_open() {
-                    settings::agreement::AgreementDialog {
-                        on_close: move |_| agreement_open.set(false),
-                    }
+                    settings::agreement::AgreementDialog { on_close: move |_| agreement_open.set(false) }
                 } else {
                     div { class: "loading-page-agreement-prompt",
                         p { "需要同意协议才能继续。" }

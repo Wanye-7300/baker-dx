@@ -48,4 +48,10 @@ impl InputViewModel {
             input_area_mode,
         });
     }
+
+    pub(crate) fn reset(&mut self) {
+        self.input_area_message_type.set(InputAreaMessageType::default());
+        self.input_area_text.set(String::new());
+        self.input_area_mode.set(InputAreaMode::default());
+    }
 }

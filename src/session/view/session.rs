@@ -10,7 +10,6 @@ use crate::session::repository::*;
 use crate::session::view_model::input_view_model::*;
 use crate::session::view_model::session_view_model::*;
 use crate::settings::state::SettingsState;
-use crate::shared::assets::icons;
 use crate::shared::assets::stickers;
 use crate::shared::database;
 use crate::shared::dialogs::{DialogUsage, DialogsManager};
@@ -49,49 +48,57 @@ pub(crate) fn SessionUI() -> Element {
     let mut input_area_text = input_view_model.input_area_text;
     let mut input_area_mode = input_view_model.input_area_mode;
 
-    let submit = move |sender: Sender| async move {
-        if input_area_message_type() == InputAreaMessageType::Text && input_area_text.is_empty() {
-            return;
-        }
-
-        let message = Message::new(
-            sender,
-            match input_area_message_type() {
-                InputAreaMessageType::Text => MessageType::Text(input_area_text()),
-                InputAreaMessageType::Image(uuid) => MessageType::Image(uuid),
-                InputAreaMessageType::HorizontalBreak => MessageType::HorizontalBreak,
-                InputAreaMessageType::State => MessageType::State(input_area_text()),
-                InputAreaMessageType::StateWithHorizontalLine => {
-                    MessageType::StateWithHorizontalLine(input_area_text())
+    let submit = {
+        let dialogs_manager = dialogs_manager.clone();
+        move |sender: Sender| {
+            let mut dialogs_manager = dialogs_manager.clone();
+            async move {
+                if input_area_message_type() == InputAreaMessageType::Text && input_area_text.is_empty() {
+                    return;
                 }
-                InputAreaMessageType::Sticker(sticker) => MessageType::Sticker(sticker),
-                InputAreaMessageType::Task => MessageType::Task {
-                    title: input_area_text(),
-                    location: "Location".to_string(),
-                    task_importance: TaskImportance::Critical,
-                    task_type: TaskType::Activity,
-                    completed: false,
-                },
-            },
-        );
 
-        match input_area_mode() {
-            InputAreaMode::Normal => {
-                panic_try!(MessageRepository::push(message_repository, message).await);
-                need_to_scroll_down.set(true);
-            }
-            InputAreaMode::Insert { id } => {
-                panic_try!(MessageRepository::insert(message_repository, message, id).await);
-                input_area_mode.set(InputAreaMode::Normal);
-            }
-            InputAreaMode::Modify { id } => {
-                panic_try!(MessageRepository::modify(message_repository, id, message).await);
-                input_area_mode.set(InputAreaMode::Normal);
+                let message = Message::new(
+                    sender,
+                    match input_area_message_type() {
+                        InputAreaMessageType::Text => MessageType::Text(input_area_text()),
+                        InputAreaMessageType::Image(uuid) => MessageType::Image(uuid),
+                        InputAreaMessageType::HorizontalBreak => MessageType::HorizontalBreak,
+                        InputAreaMessageType::State => MessageType::State(input_area_text()),
+                        InputAreaMessageType::StateWithHorizontalLine => {
+                            MessageType::StateWithHorizontalLine(input_area_text())
+                        }
+                        InputAreaMessageType::Sticker(sticker) => MessageType::Sticker(sticker),
+                        InputAreaMessageType::Task => MessageType::Task {
+                            title: input_area_text(),
+                            location: "Location".to_string(),
+                            task_importance: TaskImportance::Critical,
+                            task_type: TaskType::Activity,
+                            completed: false,
+                        },
+                    },
+                );
+
+                match input_area_mode() {
+                    InputAreaMode::Normal => {
+                        panic_try!(MessageRepository::push(message_repository, message).await);
+                        need_to_scroll_down.set(true);
+                    }
+                    InputAreaMode::Insert { id } => {
+                        panic_try!(MessageRepository::insert(message_repository, message, id).await);
+                        input_area_mode.set(InputAreaMode::Normal);
+                        dialogs_manager.remove_dialog_by_usage(DialogUsage::MessageProperties);
+                    }
+                    InputAreaMode::Modify { id } => {
+                        panic_try!(MessageRepository::modify(message_repository, id, message).await);
+                        input_area_mode.set(InputAreaMode::Normal);
+                        dialogs_manager.remove_dialog_by_usage(DialogUsage::MessageProperties);
+                    }
+                }
+
+                input_area_text.set(String::new());
+                input_area_message_type.set(InputAreaMessageType::Text);
             }
         }
-
-        input_area_text.set(String::new());
-        input_area_message_type.set(InputAreaMessageType::Text);
     };
 
     if current_session.is_some() {
@@ -108,15 +115,16 @@ pub(crate) fn SessionUI() -> Element {
                 }
                 div { id: "session-main", class: "flex flex-column",
                     SessionMainContent {}
+                    // TODO: 这些 .clone() 是否可以删去
                     if replay_mode.read().is_none() {
-                        InputArea { on_submit: submit }
+                        InputArea { on_submit: submit.clone() }
                     }
                     MainContentTopDecoration {}
                     if with_more_menu_open() {
-                        MoreMenu { on_submit: submit }
+                        MoreMenu { on_submit: submit.clone() }
                     }
                     if with_stickers_menu_open() {
-                        StickersMenu { on_submit: submit }
+                        StickersMenu { on_submit: submit.clone() }
                     }
                 }
                 img {
@@ -134,12 +142,20 @@ pub(crate) fn SessionUI() -> Element {
                                 items: vec![
                                     MenuItem {
                                         label: String::from("删除"),
-                                        on_click: EventHandler::new(move |_| async move {
-                                            panic_try!(
-                                                MessageRepository::delete(message_repository, message_id).
-                                                await
-                                            );
-                                            input_area_mode.set(InputAreaMode::Normal);
+                                        on_click: EventHandler::new({
+                                            let dialogs_manager = dialogs_manager.clone();
+                                            move |_| {
+                                                let mut dialogs_manager = dialogs_manager.clone();
+                                                async move {
+                                                    panic_try!(
+                                                        MessageRepository::delete(message_repository, message_id).
+                                                        await
+                                                    );
+                                                    input_area_mode.set(InputAreaMode::Normal);
+                                                    dialogs_manager
+                                                        .remove_dialog_by_usage(DialogUsage::MessageProperties);
+                                                }
+                                            }
                                         }),
                                     },
                                     MenuItem {
@@ -176,15 +192,21 @@ pub(crate) fn SessionUI() -> Element {
                                         label: String::from("属性…"),
                                         on_click: EventHandler::new(move |_| {
                                             let new_uuid = Uuid::new_v4();
-                                            if let Some(message) = message_repository.read().get(message_id).cloned() {
-                                                dialogs_manager.append_dialog(new_uuid, DialogUsage::MessageProperties, rsx! {
-                                                    super::MessageProperties {
-                                                        message,
-                                                        session_uuid: _session_uuid,
-                                                        message_id,
-                                                        dialog_uuid: new_uuid,
-                                                    }
-                                                }).unwrap();
+                                            if let Some(message) = message_repository
+                                                .read()
+                                                .get(message_id)
+                                                .cloned()
+                                            {
+                                                dialogs_manager
+                                                    .append_dialog(
+                                                        new_uuid,
+                                                        DialogUsage::MessageProperties,
+                                                        rsx! {
+                                                            super::MessageProperties { message, session_uuid :
+                                                            _session_uuid, message_id, dialog_uuid : new_uuid, }
+                                                        },
+                                                    )
+                                                    .unwrap();
                                             }
                                         }),
                                     },
@@ -207,12 +229,20 @@ pub(crate) fn SessionUI() -> Element {
                                 items: vec![
                                     MenuItem {
                                         label: String::from("删除"),
-                                        on_click: EventHandler::new(move |_| async move {
-                                            panic_try!(
-                                                MessageRepository::delete(message_repository, message_id).
-                                                await
-                                            );
-                                            input_area_mode.set(InputAreaMode::Normal);
+                                        on_click: EventHandler::new({
+                                            let dialogs_manager = dialogs_manager.clone();
+                                            move |_| {
+                                                let mut dialogs_manager = dialogs_manager.clone();
+                                                async move {
+                                                    panic_try!(
+                                                        MessageRepository::delete(message_repository, message_id).
+                                                        await
+                                                    );
+                                                    input_area_mode.set(InputAreaMode::Normal);
+                                                    dialogs_manager
+                                                        .remove_dialog_by_usage(DialogUsage::MessageProperties);
+                                                }
+                                            }
                                         }),
                                     },
                                     MenuItem {
@@ -243,15 +273,21 @@ pub(crate) fn SessionUI() -> Element {
                                         label: String::from("属性…"),
                                         on_click: EventHandler::new(move |_| {
                                             let new_uuid = Uuid::new_v4();
-                                            if let Some(message) = message_repository.read().get(message_id).cloned() {
-                                                dialogs_manager.append_dialog(new_uuid, DialogUsage::MessageProperties, rsx! {
-                                                    super::MessageProperties {
-                                                        message,
-                                                        session_uuid: _session_uuid,
-                                                        message_id,
-                                                        dialog_uuid: new_uuid,
-                                                    }
-                                                }).unwrap();
+                                            if let Some(message) = message_repository
+                                                .read()
+                                                .get(message_id)
+                                                .cloned()
+                                            {
+                                                dialogs_manager
+                                                    .append_dialog(
+                                                        new_uuid,
+                                                        DialogUsage::MessageProperties,
+                                                        rsx! {
+                                                            super::MessageProperties { message, session_uuid :
+                                                            _session_uuid, message_id, dialog_uuid : new_uuid, }
+                                                        },
+                                                    )
+                                                    .unwrap();
                                             }
                                         }),
                                     },
@@ -484,19 +520,13 @@ fn SessionMainContent() -> Element {
 #[component]
 fn MainContentTopDecoration() -> Element {
     rsx! {
-        div {
-            id: "main-content-top-decoration",
-            div {
-                id: "main-content-top-decoration-left",
-            }
+        div { id: "main-content-top-decoration",
+            div { id: "main-content-top-decoration-left" }
             img {
                 id: "main-content-top-decoration-right",
                 src: crate::TOP_DECO_RIGHT,
             }
-            img {
-                id: "main-content-top-decoration-colors",
-                src: crate::COLORS,
-            }
+            img { id: "main-content-top-decoration-colors", src: crate::COLORS }
         }
     }
 }
@@ -637,6 +667,7 @@ fn MoreMenu(on_submit: EventHandler<Sender>) -> Element {
     let session_ui_view_model = use_context::<SessionUIViewModel>();
     let input_view_model = use_context::<InputViewModel>();
     let operator_view_model = use_context::<OperatorViewModel>();
+    let dialogs_manager = use_context::<DialogsManager>();
 
     let mut sessions = session_view_model.sessions;
     let current_session = session_view_model.message_repository.read().current_session().unwrap();
@@ -668,6 +699,7 @@ fn MoreMenu(on_submit: EventHandler<Sender>) -> Element {
             session.set_participants_ids(participant_ids);
             session.refresh_avatar(operators.operators());
         }
+        sessions.write().save().unwrap();
     });
 
     let onchange = move |evt: Event<FormData>| {
@@ -737,6 +769,7 @@ fn MoreMenu(on_submit: EventHandler<Sender>) -> Element {
                         if let SettingItemValue::Str(name) = value {
                             sessions.write().get_mut(&current_session).unwrap().rename(name);
                         }
+                        sessions.write().save().unwrap();
                     })),
                 ))
                 .with_child(SettingItem::new(
@@ -749,9 +782,16 @@ fn MoreMenu(on_submit: EventHandler<Sender>) -> Element {
                     "删除此会话".to_owned(),
                     Some("消息会永久消失！".to_owned()),
                     SettingItemType::Button,
-                    Some(EventHandler::new(move |_: SettingItemValue| async move {
-                        message_repository.write().clear();
-                        panic_try!(SessionRepository::delete_session(sessions, current_session).await);
+                    Some(EventHandler::new({
+                        let dialogs_manager = dialogs_manager.clone();
+                        move |_: SettingItemValue| {
+                            let mut dialogs_manager = dialogs_manager.clone();
+                            async move {
+                                message_repository.write().clear();
+                                panic_try!(SessionRepository::delete_session(sessions, current_session).await);
+                                dialogs_manager.remove_dialog_by_usage(DialogUsage::MessageProperties);
+                            }
+                        }
                     })),
                 )),
             true,
@@ -917,7 +957,7 @@ fn Task(
     let task_importance_class = match task_importance {
         TaskImportance::Critical => "task-importance-critical",
         TaskImportance::Important => "task-importance-important",
-        TaskImportance::Minor => "task-importance-minor"
+        TaskImportance::Minor => "task-importance-minor",
     };
 
     rsx! {

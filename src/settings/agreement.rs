@@ -24,13 +24,10 @@ pub(crate) fn AgreementDialog(on_close: EventHandler) -> Element {
     });
 
     rsx! {
-        Dialog {
-            title,
-            uuid,
-            on_close,
+        Dialog { title, uuid, on_close,
             SettingPageView { vm, caption: title }
             if let Some(message) = save_error() {
-                p { role: "alert", "{message}" }
+                p { role: "alert", {message.to_string()} }
             }
             div { class: "dialog-buttons flex flex-row",
                 button {
@@ -45,9 +42,15 @@ pub(crate) fn AgreementDialog(on_close: EventHandler) -> Element {
                     onclick: move |_| {
                         match crate::shared::utils::set_item("agreement_accepted", &true) {
                             Ok(()) => settings.agreement_accepted.set(true),
-                            Err(_) => save_error.set(Some(
-                                "无法保存同意状态，请检查浏览器是否允许本地存储，然后重试。".to_owned(),
-                            )),
+                            Err(_) => {
+                                save_error
+                                    .set(
+                                        Some(
+                                            "无法保存同意状态，请检查浏览器是否允许本地存储，然后重试。"
+                                                .to_owned(),
+                                        ),
+                                    )
+                            }
                         }
                     },
                     "同意并继续"
