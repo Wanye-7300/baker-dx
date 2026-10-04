@@ -74,7 +74,7 @@ pub(crate) fn Settings(uuid: Uuid) -> Element {
                     "SelfAvatar".to_owned(),
                     Some("设置管理员自己的头像。".to_owned()),
                     SettingItemType::Selection {
-                        selections: assets::CHARACTERS_AVATARS.keys().map(|x| (*x).to_owned()).collect(),
+                        selections: assets::CHARACTERS_IDS.iter().map(|x| (*x).to_owned()).collect(),
                         value: match (settings_state.endministrator_avatar)() {
                             Avatar::Preset(id) => id,
                             _ => "endministratorf".to_owned(),

@@ -487,7 +487,7 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
                                         new_operator_avatar_id.set(evt.value());
                                     },
                                     option { value: "", "选择头像" }
-                                    for k in assets::CHARACTERS_AVATARS.keys() {
+                                    for k in assets::CHARACTERS_IDS.iter() {
                                         option { value: k, "{assets::CHARACTERS_NAME[k]}" }
                                     }
                                 }
