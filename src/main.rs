@@ -1,8 +1,4 @@
 //! Baker：《明日方舟：终末地》二创制作工具
-//!
-//! > [!WARNING]
-//! > 这个分支用于重写整个项目，目前还处在早期开发中。
-//! > 目前仅支持 Web Platform。
 
 use crate::operator::model::Avatar;
 use crate::ui::Baker;
