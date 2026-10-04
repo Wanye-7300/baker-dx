@@ -7,7 +7,7 @@ use crate::session::view::session_list::*;
 use crate::session::view_model::session_view_model::SessionViewModel;
 use crate::shared::assets;
 
-use crate::shared::dialogs::DialogsManager;
+use crate::shared::dialogs::{DialogUsage, DialogsManager};
 use dioxus::prelude::*;
 use fnv::FnvHashSet;
 use uuid::Uuid;
@@ -91,17 +91,21 @@ pub(super) fn Baker() -> Element {
     let dialogs_manager = use_context::<DialogsManager>();
     let settings_state = use_context::<crate::settings::state::SettingsState>();
 
-    let mut with_settings_open = use_signal(|| false);
-
     let session_name = use_signal(String::new);
     let participants_ids = use_signal(FnvHashSet::default);
 
     rsx! {
         div { id: "app", class: "flex flex-column",
             div {
-                ondoubleclick: move |evt| {
-                    evt.stop_propagation();
-                    with_settings_open.set(true);
+                ondoubleclick: {
+                    let mut dialogs_manager = dialogs_manager.clone();
+                    move |evt| {
+                        evt.stop_propagation();
+                        let uuid = Uuid::new_v4();
+                        dialogs_manager.append_dialog(uuid, DialogUsage::GeneralSettingPage, rsx! {
+                            crate::settings::components::Settings { uuid }
+                        }).unwrap();
+                    }
                 },
                 id: "title",
                 "//BAKER/会话消息"
@@ -124,14 +128,6 @@ pub(super) fn Baker() -> Element {
         }
 
         {dialogs_manager.rendered()}
-
-        if with_settings_open() {
-            crate::settings::components::Settings {
-                on_close: move |_| {
-                    with_settings_open.set(false);
-                },
-            }
-        }
 
         if let Some(uuid) = (settings_state.image)() {
             Image { id: "background-image", uuid }
@@ -216,13 +212,17 @@ pub(crate) fn Dialog(
     mut title: Signal<String>,
     on_confirm: Option<EventHandler>,
     uuid: Uuid,
-    /// 关闭方式：传入时交给外部处理（例如设置窗口的开关信号），否则把这个对话框从 dialogs 表里移除
+    /// 关闭方式：传入时交给外部处理，否则把这个对话框从 dialogs 表里移除
     #[props(default)]
     on_close: Option<EventHandler>,
     #[props(default)] confirm_disabled: bool,
     children: Element,
 ) -> Element {
     let dialogs_manager = use_context::<DialogsManager>();
+    let activate = EventHandler::new({
+        let mut dialogs_manager = dialogs_manager.clone();
+        move |()| dialogs_manager.bring_to_front(uuid)
+    });
     // 仅记录拖动手势；窗口位置由拖动事件直接写入 DOM，初始位置交给 CSS。
     let mut drag = use_signal(|| None::<DialogDrag>);
 
@@ -238,6 +238,8 @@ pub(crate) fn Dialog(
             id: "dialog-{uuid}",
             class: "dialog flex flex-column",
             onclick: move |evt| evt.stop_propagation(),
+            onpointerdown: move |_| activate.call(()),
+            onfocusin: move |_| activate.call(()),
             // 标题栏按下时捕获指针，移出窗口后仍可接收移动和松开事件。
             onpointermove: move |evt| {
                 let Some(state) = drag() else {
@@ -272,6 +274,7 @@ pub(crate) fn Dialog(
             div {
                 class: "dialog-title flex flex-row",
                 onpointerdown: move |evt| {
+                    activate.call(());
                     evt.stop_propagation();
                     if drag().is_some() {
                         return;
@@ -302,7 +305,10 @@ pub(crate) fn Dialog(
                     title: "关闭",
                     aria_label: "关闭",
                     // 从关闭按钮上按下不参与拖动
-                    onpointerdown: move |evt| evt.stop_propagation(),
+                    onpointerdown: move |evt| {
+                        activate.call(());
+                        evt.stop_propagation();
+                    },
                     onclick: {
                         let mut dialogs_manager = dialogs_manager.clone();
                         move |_| {

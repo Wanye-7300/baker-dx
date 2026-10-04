@@ -850,6 +850,23 @@ button {
   z-index: 326;
 }
 
+/* 固定整个窗口组的页面层级；空白区域仍可点击后面的页面。 */
+.dialogs-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 326;
+  pointer-events: none;
+}
+
+/* 每个窗口单独叠放，层级变化不会改动窗口自身的拖动样式。 */
+.dialog-host {
+  position: relative;
+}
+
+.dialogs-layer .dialog {
+  pointer-events: auto;
+}
+
 .dialog {
   position: fixed;
   left: 45vw;

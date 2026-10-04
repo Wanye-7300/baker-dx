@@ -8,9 +8,10 @@ use dioxus::prelude::*;
 use uuid::Uuid;
 
 #[component]
-pub(crate) fn Settings(on_close: EventHandler) -> Element {
+pub(crate) fn Settings(uuid: Uuid) -> Element {
     let mut settings_state = use_context::<SettingsState>();
     let mut dialogs_manager = use_context::<DialogsManager>();
+    let mut close_dialogs_manager = dialogs_manager.clone();
 
     use_effect(move || {
         settings_state.image.read();
@@ -115,15 +116,13 @@ pub(crate) fn Settings(on_close: EventHandler) -> Element {
         )
     });
 
-    let uuid = use_hook(Uuid::new_v4);
     let title = use_signal(|| SETTING_WINDOW_TITLE.to_string());
 
     rsx! {
         Dialog {
             title,
             uuid,
-            on_close: move |_| on_close.call(()),
-            on_confirm: move |_| on_close.call(()),
+            on_confirm: move |_| close_dialogs_manager.remove_dialog(uuid),
 
             div { id: "settings",
                 SettingPageView { vm, caption: title }
