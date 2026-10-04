@@ -852,8 +852,10 @@ button {
 
 .dialog {
   position: fixed;
-  left: 10px;
-  bottom: 10px;
+  left: 45vw;
+  top: 45vh;
+  /* 中心对准视口的 45% / 45%，大弹窗的左侧和顶部至少留 10px。 */
+  translate: max(-50%, calc(10px - 45vw)) max(-50%, calc(10px - 45vh));
   width: max-content;
   min-width: min(600px, calc(100vw - 20px));
   max-width: calc(100vw - 20px);

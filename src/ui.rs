@@ -260,7 +260,7 @@ pub(crate) fn Dialog(
                     let _ = element
                         .set_attribute(
                             "style",
-                            &format!("left: {left}px; top: {top}px; bottom: auto;"),
+                            &format!("left: {left}px; top: {top}px; bottom: auto; translate: none;"),
                         );
                 }
             },
