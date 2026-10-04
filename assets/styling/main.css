@@ -530,6 +530,11 @@ button {
   position: relative;
 }
 
+.message-bubble-wrapper:has(.message-bubble-sticker) {
+  /* 168px image + 20px padding + 6px border. */
+  width: 194px;
+}
+
 .message-bubble-wrapper:has(.message-bubble-image) {
   min-width: 150px;
   max-width: 40%;
@@ -649,8 +654,8 @@ button {
   user-select: text;
 }
 
-.message-bubble-self:not(.message-bubble-image) img,
-.message-bubble-others:not(.message-bubble-image) img {
+.message-bubble-self:not(.message-bubble-image):not(.message-bubble-sticker) img,
+.message-bubble-others:not(.message-bubble-image):not(.message-bubble-sticker) img {
   vertical-align: bottom;
   height: 1.6em;
   /* TODO: Emoji 的真实尺寸和大小看图。 */
@@ -685,10 +690,12 @@ button {
 .message-bubble-sticker {
   width: 100%;
   height: auto;
+  border-width: 3px;
   padding: 10px;
 }
 
 .message-bubble-sticker > img {
+  display: block;
   width: 100%;
   height: auto;
 }
