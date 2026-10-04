@@ -7,7 +7,7 @@ use crate::session::view::session_list::*;
 use crate::session::view_model::session_view_model::SessionViewModel;
 use crate::shared::assets;
 
-use crate::shared::dialogs::{DialogUsage, DialogsManager};
+use crate::shared::dialogs::DialogsManager;
 use dioxus::prelude::*;
 use fnv::FnvHashSet;
 use uuid::Uuid;
@@ -343,7 +343,7 @@ pub(crate) fn DialogNewSession(
     participants_ids: Signal<fnv::FnvHashSet<Uuid>>,
     uuid: Uuid,
 ) -> Element {
-    let mut dialogs_manager = use_context::<DialogsManager>();
+    let dialogs_manager = use_context::<DialogsManager>();
     let session_view_model = use_context::<SessionViewModel>();
     let mut sessions = session_view_model.sessions;
     let operator_view_model = use_context::<OperatorViewModel>();
@@ -407,25 +407,6 @@ pub(crate) fn DialogNewSession(
                     ParticipantsSelection { participants_ids }
                 }
 
-                div { class: "dialog-actions",
-                    button {
-                        id: "button-new-operator",
-                        class: "dialog-button",
-                        r#type: "button",
-                        onclick: {
-                            let mut dialogs_manager = dialogs_manager.clone();
-                            move |_| {
-                                let uuid_neo = Uuid::new_v4();
-                                dialogs_manager.append_dialog(uuid_neo, DialogUsage::ManageOperators, rsx! {
-                                    DialogManageOperators { uuid: uuid_neo }
-                                }).unwrap();
-                                dialogs_manager.remove_dialog(uuid);
-                            }
-                        },
-                        "添加新干员"
-                    }
-                }
-
                 div { class: "dialog-validation-errors",
                     if session_name.read().trim().is_empty() {
                         p { class: "dialog-validation-error", role: "alert", "请填写会话名" }
@@ -443,6 +424,7 @@ pub(crate) fn DialogNewSession(
 
 #[component]
 pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
+    let mut dialogs_manager = use_context::<DialogsManager>();
     let operator_view_model = use_context::<OperatorViewModel>();
     let mut operators = operator_view_model.operator_repository;
     let session_view_model = use_context::<SessionViewModel>();
@@ -458,66 +440,68 @@ pub(crate) fn DialogManageOperators(uuid: Uuid) -> Element {
     let title = use_signal(|| "管理干员列表".to_string());
 
     rsx! {
-        Dialog { title, on_confirm: move |_| {}, uuid,
+        Dialog { title, on_confirm: move |_| dialogs_manager.remove_dialog(uuid), uuid,
 
             div { id: "new-operator-dialog", class: "flex flex-column",
                 div { class: "menu",
                     h3 { "添加干员" }
 
                     // 添加新干员的输入区
-                    span { class: "flex flex-row",
+                    div { class: "new-operator-form",
                         img {
                             class: "new-operator-avatar",
                             src: if new_operator_avatar_id.is_empty() { Avatar::None.to_asset_operator() } else { Avatar::Preset(new_operator_avatar_id()).to_asset_operator() },
                         }
-                        InputComponent {
-                            id: "operator-name-{uuid}",
-                            label: "干员名",
-                            component_type: InputComponentType::Text,
-                            value: Some(name()),
-                            on_value_change: move |value| {
-                                if let InputType::Text(value) = value {
-                                    name.set(value);
-                                }
-                            },
-                        }
-
-                    }
-
-                    label { r#for: "avatar-select", "头像" }
-                    select {
-                        name: "avatar",
-                        id: "avatar-select",
-                        onchange: move |evt| {
-                            new_operator_avatar_id.set(evt.value());
-                        },
-                        option { value: "", "选择头像" }
-                        for k in assets::CHARACTERS_AVATARS.keys() {
-                            option { value: k, "{assets::CHARACTERS_NAME[k]}" }
-                        }
-                    }
-                    br {}
-                    button {
-                        class: "dialog-buttons-confirm",
-                        onclick: move |_| {
-                            let trimmed = name.read().trim().to_owned();
-                            if !trimmed.is_empty() {
-                                let avatar_id = new_operator_avatar_id();
-                                // 没选头像时用 Avatar::None，别把空 preset 存进去
-                                let avatar = if avatar_id.is_empty() {
-                                    Avatar::None
-                                } else {
-                                    Avatar::Preset(avatar_id)
-                                };
-
-                                operators
-                                    .write()
-                                    .push_operator(Operator::new(trimmed, avatar))
-                                    .unwrap();
-                                name.write().clear();
+                        div { class: "new-operator-fields",
+                            InputComponent {
+                                id: "operator-name-{uuid}",
+                                label: "干员名",
+                                component_type: InputComponentType::Text,
+                                value: Some(name()),
+                                on_value_change: move |value| {
+                                    if let InputType::Text(value) = value {
+                                        name.set(value);
+                                    }
+                                },
                             }
-                        },
-                        "添加"
+
+                            div { class: "new-operator-controls",
+                                label { r#for: "avatar-select", "头像" }
+                                select {
+                                    name: "avatar",
+                                    id: "avatar-select",
+                                    onchange: move |evt| {
+                                        new_operator_avatar_id.set(evt.value());
+                                    },
+                                    option { value: "", "选择头像" }
+                                    for k in assets::CHARACTERS_AVATARS.keys() {
+                                        option { value: k, "{assets::CHARACTERS_NAME[k]}" }
+                                    }
+                                }
+                                button {
+                                    class: "dialog-buttons-confirm",
+                                    onclick: move |_| {
+                                        let trimmed = name.read().trim().to_owned();
+                                        if !trimmed.is_empty() {
+                                            let avatar_id = new_operator_avatar_id();
+                                            // 没选头像时用 Avatar::None，别把空 preset 存进去
+                                            let avatar = if avatar_id.is_empty() {
+                                                Avatar::None
+                                            } else {
+                                                Avatar::Preset(avatar_id)
+                                            };
+
+                                            operators
+                                                .write()
+                                                .push_operator(Operator::new(trimmed, avatar))
+                                                .unwrap();
+                                            name.write().clear();
+                                        }
+                                    },
+                                    "添加"
+                                }
+                            }
+                        }
                     }
 
                     h3 { "干员列表管理" }

@@ -466,20 +466,6 @@ button {
   margin-top: 0;
 }
 
-.menu label:has(+ input[type="text"]) {
-  position: absolute;
-  transform: translateX(10px) translateY(4px);
-}
-
-.menu input[type="text"] {
-  margin-top: 15px;
-  font-size: 1.2em;
-  height: 2em;
-  width: 100%;
-  border: #cccccc solid 1.5px;
-  border-radius: 2px;
-}
-
 @keyframes more-menu-wrapper-popup {
   from {
     min-height: var(--input-area-height);
@@ -1092,7 +1078,38 @@ button {
   color: black;
 }
 
-#new-operator-dialog {
+#new-operator-dialog .new-operator-form {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+#new-operator-dialog .new-operator-avatar {
+  flex-shrink: 0;
+}
+
+#new-operator-dialog .new-operator-fields {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 12px;
+}
+
+#new-operator-dialog .new-operator-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#new-operator-dialog .new-operator-controls > select {
+  flex: 1;
+  min-width: 0;
+}
+
+#new-operator-dialog .new-operator-controls > button {
+  flex-shrink: 0;
 }
 
 .new-operator-avatar {

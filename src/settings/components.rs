@@ -1,6 +1,7 @@
 use super::state::SettingsState;
+use crate::shared::dialogs::{DialogUsage, DialogsManager};
 use crate::shared::setting::*;
-use crate::ui::Dialog;
+use crate::ui::{Dialog, DialogManageOperators};
 use crate::{operator::model::Avatar, panic_try, shared::assets};
 
 use dioxus::prelude::*;
@@ -9,6 +10,7 @@ use uuid::Uuid;
 #[component]
 pub(crate) fn Settings(on_close: EventHandler) -> Element {
     let mut settings_state = use_context::<SettingsState>();
+    let mut dialogs_manager = use_context::<DialogsManager>();
 
     use_effect(move || {
         settings_state.image.read();
@@ -41,8 +43,13 @@ pub(crate) fn Settings(on_close: EventHandler) -> Element {
                 .with_child(SettingItem::new(
                     "管理干员…".to_owned(),
                     None,
-                    SettingItemType::Page(SettingItemPage::new()),
-                    Some(EventHandler::new(move |_| {})),
+                    SettingItemType::Button,
+                    Some(EventHandler::new(move |_: SettingItemValue| {
+                        let uuid = Uuid::new_v4();
+                        dialogs_manager.append_dialog(uuid, DialogUsage::ManageOperators, rsx! {
+                            DialogManageOperators { uuid }
+                        }).unwrap();
+                    })),
                 ))
                 .with_child(SettingItem::new(
                     "墙纸".to_owned(),
