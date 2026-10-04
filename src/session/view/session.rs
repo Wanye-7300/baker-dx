@@ -13,6 +13,7 @@ use crate::settings::state::SettingsState;
 use crate::shared::assets::icons;
 use crate::shared::assets::stickers;
 use crate::shared::database;
+use crate::shared::dialogs::{DialogUsage, DialogsManager};
 use crate::shared::setting::*;
 use crate::ui::components::*;
 use crate::ui::selector;
@@ -30,6 +31,7 @@ pub(crate) fn SessionUI() -> Element {
     let session_view_model = use_context::<SessionViewModel>();
     let session_ui_view_model = use_context::<SessionUIViewModel>();
     let input_view_model = use_context::<InputViewModel>();
+    let mut dialogs_manager = use_context::<DialogsManager>();
 
     let sessions = session_view_model.sessions;
     let current_session = session_view_model.message_repository.read().current_session();
@@ -170,6 +172,22 @@ pub(crate) fn SessionUI() -> Element {
                                             with_replay_menu_open.set(with_message_actions_menu_open());
                                         }),
                                     },
+                                    MenuItem {
+                                        label: String::from("属性…"),
+                                        on_click: EventHandler::new(move |_| {
+                                            let new_uuid = Uuid::new_v4();
+                                            if let Some(message) = message_repository.read().get(message_id).cloned() {
+                                                dialogs_manager.append_dialog(new_uuid, DialogUsage::MessageProperties, rsx! {
+                                                    super::MessageProperties {
+                                                        message,
+                                                        session_uuid: _session_uuid,
+                                                        message_id,
+                                                        dialog_uuid: new_uuid,
+                                                    }
+                                                }).unwrap();
+                                            }
+                                        }),
+                                    },
                                 ],
                             },
                         ],
@@ -219,6 +237,22 @@ pub(crate) fn SessionUI() -> Element {
                                         label: String::from("从此消息开始回放……"),
                                         on_click: EventHandler::new(move |_| {
                                             with_replay_menu_open.set(with_message_actions_menu_open());
+                                        }),
+                                    },
+                                    MenuItem {
+                                        label: String::from("属性…"),
+                                        on_click: EventHandler::new(move |_| {
+                                            let new_uuid = Uuid::new_v4();
+                                            if let Some(message) = message_repository.read().get(message_id).cloned() {
+                                                dialogs_manager.append_dialog(new_uuid, DialogUsage::MessageProperties, rsx! {
+                                                    super::MessageProperties {
+                                                        message,
+                                                        session_uuid: _session_uuid,
+                                                        message_id,
+                                                        dialog_uuid: new_uuid,
+                                                    }
+                                                }).unwrap();
+                                            }
                                         }),
                                     },
                                 ],
@@ -880,9 +914,15 @@ fn Task(
     completed: bool,
     oncontextmenu: EventHandler<Event<MouseData>>,
 ) -> Element {
+    let task_importance_class = match task_importance {
+        TaskImportance::Critical => "task-importance-critical",
+        TaskImportance::Important => "task-importance-important",
+        TaskImportance::Minor => "task-importance-minor"
+    };
+
     rsx! {
         div { class: "task", oncontextmenu,
-            div { class: "task-importance" }
+            div { class: "task-importance {task_importance_class}" }
             div { class: "task-icon-wrapper",
                 img { class: "task-icon", src: task_type.as_asset() }
                 img {

@@ -214,7 +214,7 @@ pub(crate) fn ParticipantsSelection(participants_ids: Signal<fnv::FnvHashSet<Uui
 #[component]
 pub(crate) fn Dialog(
     mut title: Signal<String>,
-    on_confirm: EventHandler,
+    on_confirm: Option<EventHandler>,
     uuid: Uuid,
     /// 关闭方式：传入时交给外部处理（例如设置窗口的开关信号），否则把这个对话框从 dialogs 表里移除
     #[props(default)]
@@ -323,12 +323,14 @@ pub(crate) fn Dialog(
                 }
             }
             div { class: "dialog-content", {children} }
-            div { class: "dialog-buttons flex flex-row",
-                button {
-                    class: "dialog-buttons-confirm",
-                    disabled: confirm_disabled,
-                    onclick: move |_| on_confirm.call(()),
-                    "好"
+            if let Some(on_confirm) = on_confirm {
+                div { class: "dialog-buttons flex flex-row",
+                    button {
+                        class: "dialog-buttons-confirm",
+                        disabled: confirm_disabled,
+                        onclick: move |_| on_confirm.call(()),
+                        "好"
+                    }
                 }
             }
         }

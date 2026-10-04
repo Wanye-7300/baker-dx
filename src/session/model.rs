@@ -1,3 +1,6 @@
+use std::str::FromStr;
+
+use crate::session::repository::MessageRepository;
 use crate::shared::assets::{
     self, ALL_MISSION_ICON_GRAY, CHAR_MISSION_ICON_GRAY, FAC_MISSION_ICON_GRAY, MAIN_MISSION_ICON_GRAY,
     MISC_MISSION_ICON_GRAY,
@@ -6,9 +9,10 @@ use crate::{operator::model::*, shared::assets::ACTIVITY_MISSION_ICON_GRAY};
 
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
+use strum::{EnumString, VariantNames};
 use uuid::Uuid;
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, EnumString, VariantNames, strum::Display)]
 #[repr(u8)]
 pub(crate) enum TaskImportance {
     Critical,
@@ -16,7 +20,7 @@ pub(crate) enum TaskImportance {
     Minor,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, EnumString, VariantNames, strum::Display)]
 #[repr(u8)]
 pub(crate) enum TaskType {
     Activity,
@@ -78,6 +82,28 @@ impl MessageType {
         matches!(self, MessageType::Text(_))
             || matches!(self, MessageType::Image(_))
             || matches!(self, MessageType::Sticker(_))
+    }
+
+    pub(crate) unsafe fn as_text_mut_unchecked(&mut self) -> &mut String {
+        match self {
+            MessageType::Text(text) => text,
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+
+    pub(crate) unsafe fn as_task_mut_unchecked(
+        &mut self,
+    ) -> (&mut String, &mut String, &mut TaskImportance, &mut TaskType, &mut bool) {
+        match self {
+            MessageType::Task {
+                title,
+                location,
+                task_importance,
+                task_type,
+                completed,
+            } => (title, location, task_importance, task_type, completed),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
     }
 }
 
@@ -214,6 +240,157 @@ impl Message {
 
     pub(crate) fn clear_reaction(&mut self) -> Vec<Reaction> {
         std::mem::take(&mut self.reactions)
+    }
+
+    pub(crate) fn get_settings_vm(
+        &self,
+        repository: Signal<MessageRepository>,
+        session_uuid: Uuid,
+        message_id: u64,
+    ) -> crate::shared::setting::SettingViewModel {
+        use crate::shared::setting::*;
+
+        SettingViewModel::new(
+            format!("属性 {}:{}", session_uuid, message_id),
+            match self.content() {
+                MessageType::Task {
+                    title,
+                    location,
+                    task_importance,
+                    task_type,
+                    completed,
+                } => SettingItemPage::new()
+                    .with_child(SettingItem::new(
+                        "标题".to_string(),
+                        None,
+                        SettingItemType::Str {
+                            value: title.to_string(),
+                        },
+                        Some(EventHandler::new(move |val| {
+                            let mut message = repository.read().get(message_id).unwrap().clone();
+
+                            async move {
+                                match val {
+                                    SettingItemValue::Str(value) => {
+                                        *unsafe { message.content.as_task_mut_unchecked() }.0 = value;
+                                        MessageRepository::modify(repository, message_id, message)
+                                            .await
+                                            .unwrap();
+                                    }
+                                    _ => unsafe {
+                                        std::hint::unreachable_unchecked();
+                                    },
+                                }
+                            }
+                        })),
+                    ))
+                    .with_child(SettingItem::new(
+                        "地点".to_string(),
+                        None,
+                        SettingItemType::Str {
+                            value: location.to_string(),
+                        },
+                        Some(EventHandler::new(move |val| {
+                            let mut message = repository.read().get(message_id).unwrap().clone();
+
+                            async move {
+                                match val {
+                                    SettingItemValue::Str(value) => {
+                                        *unsafe { message.content.as_task_mut_unchecked() }.1 = value;
+                                        MessageRepository::modify(repository, message_id, message)
+                                            .await
+                                            .unwrap();
+                                    }
+                                    _ => unsafe {
+                                        std::hint::unreachable_unchecked();
+                                    },
+                                }
+                            }
+                        })),
+                    ))
+                    .with_child(SettingItem::new(
+                        "重要性".to_string(),
+                        None,
+                        SettingItemType::Selection {
+                            selections: TaskImportance::VARIANTS.iter().map(|x| (*x).to_owned()).collect(),
+                            value: task_importance.to_string(),
+                        },
+                        Some(EventHandler::new(move |val| {
+                            let mut message = repository.read().get(message_id).unwrap().clone();
+
+                            async move {
+                                match val {
+                                    SettingItemValue::Selection(value) => {
+                                        *unsafe { message.content.as_task_mut_unchecked() }.2 =
+                                            TaskImportance::from_str(&value).unwrap();
+                                        MessageRepository::modify(repository, message_id, message)
+                                            .await
+                                            .unwrap();
+                                    }
+                                    _ => unsafe {
+                                        std::hint::unreachable_unchecked();
+                                    },
+                                }
+                            }
+                        })),
+                    ))
+                    .with_child(SettingItem::new(
+                        "任务类型".to_string(),
+                        Some("控制任务的图标。缩写稍微有点晦涩难懂，作者没搞明白是什么意思。".to_string()),
+                        SettingItemType::Selection {
+                            selections: TaskType::VARIANTS.iter().map(|x| (*x).to_owned()).collect(),
+                            value: task_type.to_string(),
+                        },
+                        Some(EventHandler::new(move |val| {
+                            let mut message = repository.read().get(message_id).unwrap().clone();
+
+                            async move {
+                                match val {
+                                    SettingItemValue::Selection(value) => {
+                                        *unsafe { message.content.as_task_mut_unchecked() }.3 =
+                                            TaskType::from_str(&value).unwrap();
+                                        MessageRepository::modify(repository, message_id, message)
+                                            .await
+                                            .unwrap();
+                                    }
+                                    _ => unsafe {
+                                        std::hint::unreachable_unchecked();
+                                    },
+                                }
+                            }
+                        })),
+                    ))
+                    .with_child(SettingItem::new(
+                        "已完成".to_string(),
+                        None,
+                        SettingItemType::Bool { value: *completed },
+                        Some(EventHandler::new(move |val| {
+                            let mut message = repository.read().get(message_id).unwrap().clone();
+
+                            async move {
+                                match val {
+                                    SettingItemValue::Bool(value) => {
+                                        *unsafe { message.content.as_task_mut_unchecked() }.4 = value;
+                                        MessageRepository::modify(repository, message_id, message)
+                                            .await
+                                            .unwrap();
+                                    }
+                                    _ => unsafe {
+                                        std::hint::unreachable_unchecked();
+                                    },
+                                }
+                            }
+                        })),
+                    )),
+                _ => SettingItemPage::new().with_child(SettingItem::new(
+                    "没有设置".to_string(),
+                    Some("如果要修改内容，请使用**修改模式**。".to_string()),
+                    SettingItemType::Empty,
+                    None,
+                )),
+            },
+            false,
+        )
     }
 }
 

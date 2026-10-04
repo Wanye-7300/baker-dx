@@ -6,6 +6,7 @@ pub(crate) enum DialogUsage {
     GeneralSettingPage,
     NewSession,
     ManageOperators,
+    MessageProperties,
 }
 
 #[derive(Clone)]

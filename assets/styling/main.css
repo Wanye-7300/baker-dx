@@ -237,6 +237,10 @@ button {
   justify-content: center;
 }
 
+#session-main * {
+  font-weight: 500;
+}
+
 #session-header span {
   margin-left: 40px;
   font-size: 1.2em;
@@ -1293,6 +1297,7 @@ button {
 
 .component-input {
   position: relative;
+  background-color: transparent;
 }
 
 .component-input > input {

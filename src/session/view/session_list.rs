@@ -7,10 +7,10 @@ use crate::{
     ui::DialogNewSession,
 };
 
+use crate::shared::dialogs::{DialogUsage, DialogsManager};
 use dioxus::prelude::*;
 use fnv::FnvHashSet;
 use uuid::Uuid;
-use crate::shared::dialogs::{DialogUsage, DialogsManager};
 
 #[component]
 pub(crate) fn SessionList(session_name: Signal<String>, participants_ids: Signal<FnvHashSet<Uuid>>) -> Element {

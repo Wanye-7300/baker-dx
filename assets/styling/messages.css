@@ -16,10 +16,21 @@
 }
 
 .task > .task-importance {
-  width: 8px;
+  width: 6px;
   height: 100%;
-  background-color: yellow;
   border-radius: 8px 0 0 8px;
+}
+
+.task-importance-critical {
+  background-color: #ffef00;
+}
+
+.task-importance-important {
+  background-color: #c7fd00;
+}
+
+.task-importance-minor {
+  background-color: #8ddafd;
 }
 
 .task > .task-icon-wrapper {

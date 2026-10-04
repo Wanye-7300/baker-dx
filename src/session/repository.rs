@@ -294,6 +294,10 @@ impl MessageRepository {
         self.messages = None;
         self.session_uuid = None;
     }
+
+    pub(crate) fn get(&self, id: u64) -> Option<&Message> {
+        self.messages.as_ref()?.get(&id)
+    }
 }
 
 #[derive(Clone, Debug)]
