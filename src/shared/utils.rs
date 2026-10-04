@@ -39,7 +39,9 @@ pub(crate) fn set_item<T: serde::Serialize>(key: &str, item: &T) -> anyhow::Resu
             .local_storage()
             .map_err(|err| anyhow::anyhow!("LocalStorage: Failed to get local storage: {err:?}"))?
             .ok_or_else(|| anyhow::anyhow!("LocalStorage: Failed to get storage"))?;
-        let _ = local_storage.set_item(key, &serde_json::to_string(&item).unwrap());
+        local_storage
+            .set_item(key, &serde_json::to_string(item)?)
+            .map_err(|err| anyhow::anyhow!("LocalStorage: Failed to set item `{key}`: {err:?}"))?;
     }
 
     #[cfg(not(feature = "web"))]

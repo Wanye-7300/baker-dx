@@ -107,3 +107,41 @@
     width: 100vw;
   }
 }
+
+/* 单独设置层级，避免修改其他窗口或被加载界面遮挡。 */
+.loading-page-agreement {
+  position: fixed;
+  inset: 0;
+  z-index: 100002;
+}
+
+.loading-page-agreement .dialog {
+  width: min(48rem, calc(100vw - 20px));
+  box-sizing: border-box;
+}
+
+.loading-page-agreement-prompt {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  max-width: calc(100vw - 4rem);
+  padding: 16px;
+}
+
+.loading-page-agreement-prompt > p {
+  margin: 0 0 12px;
+}
+
+.loading-page-agreement-prompt > button:focus-visible {
+  outline: 2px solid oklch(62.3% 0.214 259.815);
+  outline-offset: 2px;
+}
+
+.loading-page-status {
+  position: fixed;
+  top: 2rem;
+  left: 2rem;
+  right: 2rem;
+  z-index: 100002;
+  overflow-wrap: anywhere;
+}

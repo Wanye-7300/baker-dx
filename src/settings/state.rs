@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 pub(crate) struct SettingsState {
+    pub(crate) agreement_accepted: Signal<bool>,
     pub(crate) image: Signal<Option<Uuid>>,
     pub(crate) endministrator_avatar: Signal<Avatar>,
     pub(crate) endministrator_name: Signal<String>,

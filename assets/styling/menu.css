@@ -1,5 +1,6 @@
 ._menu,
-.dialog {
+.dialog,
+.loading-page-agreement-prompt {
   background-color: #ffffffd5;
   backdrop-filter: blur(8px);
   border-radius: 8px;
@@ -19,7 +20,8 @@
 }
 
 ._menu *,
-.dialog * {
+.dialog *,
+.loading-page-agreement-prompt * {
   color: black;
 }
 

@@ -73,6 +73,9 @@ fn main() {
 }
 
 fn provide_settings() {
+    let agreement_accepted = use_signal(|| {
+        shared::utils::get_item_or_default("agreement_accepted", || false).unwrap_or(false)
+    });
     let image = use_signal(|| shared::utils::get_item_or_default("wallpaper", || None).unwrap_or(None));
     let endministrator_avatar = use_signal(|| {
         shared::utils::get_item_or_default("E_avatar", || Avatar::Preset("endministratorf".to_owned()))
@@ -83,6 +86,7 @@ fn provide_settings() {
     });
 
     use_context_provider(|| settings::state::SettingsState {
+        agreement_accepted,
         image,
         endministrator_avatar,
         endministrator_name,
@@ -98,8 +102,20 @@ fn App() -> Element {
     crate::session::view_model::session_view_model::SessionUIViewModel::use_session_ui_view_model_provider();
     crate::operator::view_model::OperatorViewModel::use_operator_view_model_provider().unwrap();
 
+    let settings_state = use_context::<settings::state::SettingsState>();
+    let agreement_accepted = settings_state.agreement_accepted;
+    let mut agreement_open = use_signal(move || !agreement_accepted());
+    let mut agreement_task_completed = use_signal(|| false);
     let mut task_cnt = use_signal(|| 0);
-    let task_total = use_signal(|| 1);
+    let task_total = use_signal(|| 2);
+
+    // 协议确认和数据库初始化各占一个加载任务；已同意时直接完成协议任务。
+    use_effect(move || {
+        if agreement_accepted() && !agreement_task_completed() {
+            agreement_task_completed.set(true);
+            *task_cnt.write() += 1;
+        }
+    });
     let mut loading_progress = use_signal(|| 0.0f32);
     let on_loading_completed = use_signal(|| false);
     let on_loading_animation_completed = use_signal(|| false);
@@ -109,10 +125,15 @@ fn App() -> Element {
         loading_progress.set(task_cnt() as f32 / task_total().max(1) as f32);
     });
 
-    let _database = use_resource(move || async move {
-        let open_result = shared::database::open_db().await;
+    let database = use_resource(move || async move {
+        // 读取同意状态，使用户同意后重新执行此任务；等待期间不打开数据库。
+        if !agreement_accepted() {
+            return Ok(());
+        }
+
+        shared::database::open_db().await?;
         *task_cnt.write() += 1;
-        open_result
+        Ok::<(), anyhow::Error>(())
     });
 
     let font_face = format!(
@@ -210,16 +231,43 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: LOADING_PAGE_CSS }
         document::Link { rel: "stylesheet", href: SHARED_COMPONENTS_CSS }
 
-        if shared::database::is_ready() {
+        if shared::database::is_ready() && agreement_accepted() {
             Router::<Route> {}
-        } else {
-            div { id: "database-loading", class: "flex", "加载数据库" }
+        }
+        if agreement_accepted() && !shared::database::is_ready() {
+            div { id: "database-loading", class: "loading-page-status",
+                if let Some(Err(err)) = &*database.read() {
+                    p { role: "alert", "数据库初始化失败：{err}" }
+                    p { "请检查浏览器存储权限后刷新页面重试。" }
+                } else {
+                    p { "正在初始化数据库…" }
+                }
+            }
         }
         if !on_loading_animation_completed() {
             LoadingPage {
                 progress: loading_progress,
                 on_loading_completed,
                 on_loading_animation_completed,
+            }
+        }
+        if !agreement_accepted() {
+            div { class: "loading-page-agreement",
+                if agreement_open() {
+                    settings::agreement::AgreementDialog {
+                        on_close: move |_| agreement_open.set(false),
+                    }
+                } else {
+                    div { class: "loading-page-agreement-prompt",
+                        p { "需要同意协议才能继续。" }
+                        button {
+                            class: "shared-button",
+                            r#type: "button",
+                            onclick: move |_| agreement_open.set(true),
+                            "查看协议"
+                        }
+                    }
+                }
             }
         }
         // 放在 LoadingPage 外面：LoadingPage 退场时有 transform，会成为 fixed 元素的包含块，
